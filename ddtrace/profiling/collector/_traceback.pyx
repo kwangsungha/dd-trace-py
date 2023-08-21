@@ -4,8 +4,6 @@ from types import FrameType
 
 from ddtrace.internal.logger import get_logger
 
-from ddtrace.profiling.collector.logging_tools import display_str
-
 
 DDFrame = namedtuple("DDFrame", ["file_name", "lineno", "function_name", "class_name"])
 
@@ -45,19 +43,23 @@ cpdef traceback_to_frames(traceback, max_nframes):
     tb = traceback
     frames = []
     nframes = 0
-    display_str(f"    <tb> nframes: {nframes}")
     while tb is not None:
         if nframes < max_nframes:
-            display_str(f"    <f> tb_lineno: {tb.tb_lineno}")
             frame = tb.tb_frame
-            display_str(f"    <f> f_lineno: {frame.f_lineno}")
-            display_str(f"    <f> frame_type: {frame.__class__.__name__}")
-            class_name = _extract_class_name(frame)
-            display_str(f"    <f> class: {class_name}")
+            IF PY_VERSION_HEX >= 0x030b0000:
+                if not isinstance(frame, FrameType):
+                    log.warning(
+                        "Got object of type '%s' instead of a frame object during stack unwinding", type(frame).__name__
+                    )
+                    return [], 0
             code = frame.f_code
+            IF PY_VERSION_HEX >= 0x030b0000:
+                if not isinstance(code, CodeType):
+                    log.warning(
+                        "Got object of type '%s' instead of a code object during stack unwinding", type(code).__name__
+                    )
+                    return [], 0
             lineno = 0 if frame.f_lineno is None else frame.f_lineno
-            display_str(f"    <f> code_type: {code.__class__.__name__}")
-            display_str(f"    <f> {code.co_filename}:{code.co_name}")
             frames.insert(0, DDFrame(code.co_filename, lineno, code.co_name, _extract_class_name(frame)))
         nframes += 1
         tb = tb.tb_next
@@ -85,11 +87,6 @@ cpdef pyframe_to_frames(frame, max_nframes):
     nframes = 0
 
     while frame is not None:
-        display_str(f"    <pf> nframes: {nframes}")
-        display_str(f"    <f> frame_type: {frame.__class__.__name__}")
-        display_str(f"    <f> f_lineno: {frame.f_lineno}")
-        class_name = _extract_class_name(frame)
-        display_str(f"    <f> class: {class_name}")
         IF PY_VERSION_HEX >= 0x030b0000:
             if not isinstance(frame, FrameType):
                 log.warning(
@@ -99,7 +96,6 @@ cpdef pyframe_to_frames(frame, max_nframes):
 
         if nframes < max_nframes:
             code = frame.f_code
-            display_str(f"    <f> code_type: {code.__class__.__name__}")
             IF PY_VERSION_HEX >= 0x030b0000:
                 if not isinstance(code, CodeType):
                     log.warning(

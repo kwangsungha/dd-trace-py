@@ -19,7 +19,6 @@ from ddtrace.profiling import collector
 from ddtrace.profiling.collector import _task
 from ddtrace.profiling.collector import _traceback
 from ddtrace.profiling.collector import stack_event
-from ddtrace.profiling.collector.logging_tools import display_str
 from ddtrace.settings.profiling import config
 
 
