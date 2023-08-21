@@ -19,6 +19,7 @@ from ddtrace.profiling import collector
 from ddtrace.profiling.collector import _task
 from ddtrace.profiling.collector import _traceback
 from ddtrace.profiling.collector import stack_event
+from ddtrace.profiling.collector.logging_tools import display_str
 from ddtrace.settings.profiling import config
 
 
@@ -227,8 +228,6 @@ ELSE:
     cdef extern from "<pystate.h>":
         PyObject* _PyThread_CurrentFrames()
 
-
-
 cdef collect_threads(thread_id_ignore_list, thread_time, thread_span_links) with gil:
     cdef dict current_exceptions = {}
 
@@ -324,6 +323,7 @@ cdef stack_collect(ignore_profiler, thread_time, max_nframes, interval, wall_tim
     exc_events = []
 
     for thread_id, thread_native_id, thread_name, thread_pyframes, exception, span, cpu_time in running_threads:
+        display_str(f"<T> [{thread_id}.{thread_native_id}]: {thread_name}")
         if thread_name is None:
             # A Python thread with no name is likely still initialising so we
             # ignore it to avoid reporting potentially misleading data.
@@ -335,6 +335,7 @@ cdef stack_collect(ignore_profiler, thread_time, max_nframes, interval, wall_tim
         # Inject wall time for all running tasks
         for task_id, task_name, task_pyframes in tasks:
 
+            display_str(f"<t> [{thread_id}.{thread_native_id}.{task_id}]: {task_name}")
             # Ignore tasks with no frames; nothing to show.
             if task_pyframes is None:
                 continue
