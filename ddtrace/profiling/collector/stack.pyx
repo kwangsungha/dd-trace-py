@@ -236,14 +236,13 @@ cdef collect_threads(thread_id_ignore_list, thread_time, thread_span_links) with
         cdef PyInterpreterState* interp
         cdef PyThreadState* tstate
         cdef _PyErr_StackItem* exc_info
-        cdef PyThread_type_lock lmutex = _PyRuntime.interpreters.mutex
         cdef PyObject* exc_type
         cdef PyObject* exc_tb
         cdef dict running_threads = {}
 
         # This is an internal lock but we do need it.
         # See https://bugs.python.org/issue1021318
-        if PyThread_acquire_lock(lmutex, WAIT_LOCK) == PY_LOCK_ACQUIRED:
+        if True:
             # Do not try to do anything fancy here:
             # Even calling print() will deadlock the program has it will try
             # to lock the GIL and somehow touching this mutex.
@@ -280,7 +279,7 @@ cdef collect_threads(thread_id_ignore_list, thread_time, thread_span_links) with
 
                     interp = PyInterpreterState_Next(interp)
             finally:
-                PyThread_release_lock(lmutex)
+                pass
     ELSE:
         cdef dict running_threads = <dict>_PyThread_CurrentFrames()
 
@@ -314,14 +313,16 @@ cdef stack_collect(ignore_profiler, thread_time, max_nframes, interval, wall_tim
         if getattr(thread, "_ddtrace_profiling_ignore", False)
     } if ignore_profiler else set()
 
+    stack_events = []
+    exc_events = []
+    cdef PyThread_type_lock lmutex = _PyRuntime.interpreters.mutex
+    if PyThread_acquire_lock(lmutex, WAIT_LOCK) != PY_LOCK_ACQUIRED:
+        return stack_events, exc_events
     running_threads = collect_threads(thread_id_ignore_list, thread_time, thread_span_links)
 
     if thread_span_links:
         # FIXME also use native thread id
         thread_span_links.clear_threads(set(thread[0] for thread in running_threads))
-
-    stack_events = []
-    exc_events = []
 
     for thread_id, thread_native_id, thread_name, thread_pyframes, exception, span, cpu_time in running_threads:
         if thread_name is None:
