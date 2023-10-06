@@ -51,6 +51,8 @@ HTTP_HEADER_SAMPLING_PRIORITY = "x-datadog-sampling-priority"
 HTTP_HEADER_ORIGIN = "x-datadog-origin"
 
 
+
+
 _HTTP_HEADER_B3_SINGLE = "b3"
 _HTTP_HEADER_B3_TRACE_ID = "x-b3-traceid"
 _HTTP_HEADER_B3_SPAN_ID = "x-b3-spanid"
@@ -229,7 +231,7 @@ class _DatadogMultiHeader:
             headers[HTTP_HEADER_TRACE_ID] = str(span_context.trace_id)
         log.debug("teague.bick - z")
 
-        from ddtrace.internal.accupath.processor import inject_context
+        from ddtrace.internal.acupath.processor import inject_context
         inject_context(headers)
 
         headers[HTTP_HEADER_PARENT_ID] = str(span_context.span_id)
@@ -284,9 +286,9 @@ class _DatadogMultiHeader:
         except ValueError:
             trace_id = 0
 
-        from ddtrace.internal.accupath.processor import extract_accupath_information
-        extract_accupath_information(headers)
-        from ddtrace.internal.accupath.processor import report_information_to_backend
+        from ddtrace.internal.acupath.processor import extract_acupath_information
+        extract_acupath_information(headers)
+        from ddtrace.internal.acupath.processor import report_information_to_backend
         report_information_to_backend()
 
 

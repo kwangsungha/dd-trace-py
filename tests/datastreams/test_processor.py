@@ -54,6 +54,7 @@ def test_kafka_offset_monitoring():
     assert processor._buckets[bucket_time_ns].latest_produce_offsets[PartitionKey("topic1", 2)] == 10
     assert processor._buckets[bucket_time_ns].latest_commit_offsets[ConsumerPartitionKey("group1", "topic1", 1)] == 14
 
+<<<<<<< Updated upstream
 
 def test_processor_atexit(ddtrace_run_python_code_in_subprocess):
     code = """
