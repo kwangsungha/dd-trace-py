@@ -1,19 +1,18 @@
 # coding: utf-8
 import base64
 from collections import defaultdict
-from functools import partial
 import gzip
 import os
 import struct
 import threading
 import time
 import typing
-from typing import DefaultDict  # noqa:F401
-from typing import Dict  # noqa:F401
-from typing import List  # noqa:F401
-from typing import NamedTuple  # noqa:F401
-from typing import Optional  # noqa:F401
-from typing import Union  # noqa:F401
+from typing import DefaultDict
+from typing import Dict
+from typing import List
+from typing import NamedTuple
+from typing import Optional
+from typing import Union
 
 from ddsketch import LogCollapsingLowestDenseDDSketch
 from ddsketch.pb.proto import DDSketchProto
@@ -21,8 +20,6 @@ import six
 
 import ddtrace
 from ddtrace import config
-from ddtrace.internal.atexit import register_on_exit_signal
-from ddtrace.internal.constants import DEFAULT_SERVICE_NAME
 from ddtrace.internal.utils.retry import fibonacci_backoff_with_jitter
 
 from .._encoding import packb
@@ -58,7 +55,6 @@ log = get_logger(__name__)
 
 PROPAGATION_KEY = "dd-pathway-ctx"
 PROPAGATION_KEY_BASE_64 = "dd-pathway-ctx-base64"
-SHUTDOWN_TIMEOUT = 5
 
 """
 PathwayAggrKey uniquely identifies a pathway to aggregate stats on.
@@ -73,12 +69,11 @@ PathwayAggrKey = typing.Tuple[
 class PathwayStats(object):
     """Aggregated pathway statistics."""
 
-    __slots__ = ("full_pathway_latency", "edge_latency", "payload_size")
+    __slots__ = ("full_pathway_latency", "edge_latency")
 
     def __init__(self):
         self.full_pathway_latency = LogCollapsingLowestDenseDDSketch(0.00775, bin_limit=2048)
         self.edge_latency = LogCollapsingLowestDenseDDSketch(0.00775, bin_limit=2048)
-        self.payload_size = LogCollapsingLowestDenseDDSketch(0.00775, bin_limit=2048)
 
 
 PartitionKey = NamedTuple("PartitionKey", [("topic", str), ("partition", int)])
@@ -93,7 +88,7 @@ Bucket = NamedTuple(
 )
 
 
-class DataStreamsProcessor(PeriodicService):
+class DataStreamsProcessor(PeriodicSeyyrvice):
     """DataStreamsProcessor for computing, collecting and submitting data stream stats to the Datadog Agent."""
 
     def __init__(self, agent_url, interval=None, timeout=1.0, retry_attempts=3):
@@ -117,23 +112,22 @@ class DataStreamsProcessor(PeriodicService):
             "Content-Encoding": "gzip",
         }  # type: Dict[str, str]
         self._hostname = six.ensure_text(get_hostname())
-        self._service = six.ensure_text(config._get_service(DEFAULT_SERVICE_NAME))
+        self._service = six.ensure_text(config._get_service("unnamed-python-service"))
         self._lock = Lock()
         self._current_context = threading.local()
         self._enabled = True
 
         self._flush_stats_with_backoff = fibonacci_backoff_with_jitter(
             attempts=retry_attempts,
-            initial_wait=0.618 * self.interval / (1.618**retry_attempts) / 2,
+            initial_wait=0.618 * self.interval / (1.618 ** retry_attempts) / 2,
         )(self._flush_stats)
 
-        register_on_exit_signal(partial(_atexit, obj=self))
         self.start()
 
     def on_checkpoint_creation(
-        self, hash_value, parent_hash, edge_tags, now_sec, edge_latency_sec, full_pathway_latency_sec, payload_size=0
+        self, hash_value, parent_hash, edge_tags, now_sec, edge_latency_sec, full_pathway_latency_sec
     ):
-        # type: (int, int, List[str], float, float, float, Optional[int]) -> None
+        # type: (int, int, List[str], float, float, float) -> None
         """
         on_checkpoint_creation is called every time a new checkpoint is created on a pathway. It records the
         latency to the previous checkpoint in the pathway (edge latency),
@@ -161,7 +155,6 @@ class DataStreamsProcessor(PeriodicService):
             stats = self._buckets[bucket_time_ns].pathway_stats[aggr_key]
             stats.full_pathway_latency.add(full_pathway_latency_sec)
             stats.edge_latency.add(edge_latency_sec)
-            stats.payload_size.add(payload_size)
             self._buckets[bucket_time_ns].pathway_stats[aggr_key] = stats
 
     def track_kafka_produce(self, topic, partition, offset, now_sec):
@@ -195,42 +188,42 @@ class DataStreamsProcessor(PeriodicService):
             for aggr_key, stat_aggr in bucket.pathway_stats.items():
                 edge_tags, hash_value, parent_hash = aggr_key
                 serialized_bucket = {
-                    "EdgeTags": [six.ensure_text(tag) for tag in edge_tags.split(",")],
-                    "Hash": hash_value,
-                    "ParentHash": parent_hash,
-                    "PathwayLatency": DDSketchProto.to_proto(stat_aggr.full_pathway_latency).SerializeToString(),
-                    "EdgeLatency": DDSketchProto.to_proto(stat_aggr.edge_latency).SerializeToString(),
+                    u"EdgeTags": [six.ensure_text(tag) for tag in edge_tags.split(",")],
+                    u"Hash": hash_value,
+                    u"ParentHash": parent_hash,
+                    u"PathwayLatency": DDSketchProto.to_proto(stat_aggr.full_pathway_latency).SerializeToString(),
+                    u"EdgeLatency": DDSketchProto.to_proto(stat_aggr.edge_latency).SerializeToString(),
                 }
                 bucket_aggr_stats.append(serialized_bucket)
             for consumer_key, offset in bucket.latest_commit_offsets.items():
                 backlogs.append(
                     {
-                        "Tags": [
+                        u"Tags": [
                             "type:kafka_commit",
                             "consumer_group:" + consumer_key.group,
                             "topic:" + consumer_key.topic,
                             "partition:" + str(consumer_key.partition),
                         ],
-                        "Value": offset,
+                        u"Value": offset,
                     }
                 )
             for producer_key, offset in bucket.latest_produce_offsets.items():
                 backlogs.append(
                     {
-                        "Tags": [
+                        u"Tags": [
                             "type:kafka_produce",
                             "topic:" + producer_key.topic,
                             "partition:" + str(producer_key.partition),
                         ],
-                        "Value": offset,
+                        u"Value": offset,
                     }
                 )
             serialized_buckets.append(
                 {
-                    "Start": bucket_time_ns,
-                    "Duration": self._bucket_size_ns,
-                    "Stats": bucket_aggr_stats,
-                    "Backlogs": backlogs,
+                    u"Start": bucket_time_ns,
+                    u"Duration": self._bucket_size_ns,
+                    u"Stats": bucket_aggr_stats,
+                    u"Backlogs": backlogs,
                 }
             )
 
@@ -274,16 +267,16 @@ class DataStreamsProcessor(PeriodicService):
             log.debug("No data streams reported. Skipping flushing.")
             return
         raw_payload = {
-            "Service": self._service,
-            "TracerVersion": ddtrace.__version__,
-            "Lang": "python",
-            "Stats": serialized_stats,
-            "Hostname": self._hostname,
+            u"Service": self._service,
+            u"TracerVersion": ddtrace.__version__,
+            u"Lang": "python",
+            u"Stats": serialized_stats,
+            u"Hostname": self._hostname,
         }  # type: Dict[str, Union[List[Dict], str]]
         if config.env:
-            raw_payload["Env"] = six.ensure_text(config.env)
+            raw_payload[u"Env"] = six.ensure_text(config.env)
         if config.version:
-            raw_payload["Version"] = six.ensure_text(config.version)
+            raw_payload[u"Version"] = six.ensure_text(config.version)
 
         payload = packb(raw_payload)
         compressed = gzip_compress(payload)
@@ -332,14 +325,7 @@ class DataStreamsProcessor(PeriodicService):
         ctx = DataStreamsCtx(self, 0, now_sec, now_sec)
         return ctx
 
-    def set_checkpoint(self, tags, now_sec=None, payload_size=0, span=None):
-        """
-        type: (List[str], Optional[int], Optional[int]) -> DataStreamsCtx
-        :param tags: a list of strings identifying the pathway and direction
-        :param now_sec: The time in seconds to count as "now" when computing latencies
-        :param payload_size: The size of the payload being sent in bytes
-        """
-
+    def set_checkpoint(self, tags, now_sec=None):
         if not now_sec:
             now_sec = time.time()
         if hasattr(self._current_context, "value"):
@@ -347,12 +333,7 @@ class DataStreamsProcessor(PeriodicService):
         else:
             ctx = self.new_pathway()
             self._current_context.value = ctx
-        if "direction:out" in tags:
-            # Add the header for this now, as the callee doesn't have access
-            # when producing
-            payload_size += len(ctx.encode())
-            payload_size += len(PROPAGATION_KEY)
-        ctx.set_checkpoint(tags, now_sec=now_sec, payload_size=payload_size, span=span)
+        ctx.set_checkpoint(tags, now_sec=now_sec)
         return ctx
 
 
@@ -363,7 +344,7 @@ class DataStreamsCtx:
         self.pathway_start_sec = pathway_start_sec
         self.current_edge_start_sec = current_edge_start_sec
         self.hash = hash_value
-        self.service = six.ensure_text(config._get_service(DEFAULT_SERVICE_NAME))
+        self.service = six.ensure_text(config._get_service("unnamed-python-service"))
         self.env = six.ensure_text(config.env or "none")
         # loop detection logic
         self.previous_direction = ""
@@ -386,8 +367,15 @@ class DataStreamsCtx:
         return data_streams_context
 
     def _compute_hash(self, tags, parent_hash):
-        def get_bytes(s):
-            return bytes(s, encoding="utf-8")
+        if six.PY3:
+
+            def get_bytes(s):
+                return bytes(s, encoding="utf-8")
+
+        else:
+
+            def get_bytes(s):
+                return bytes(s)
 
         b = get_bytes(self.service) + get_bytes(self.env)
         for t in tags:
@@ -395,15 +383,7 @@ class DataStreamsCtx:
         node_hash = fnv1_64(b)
         return fnv1_64(struct.pack("<Q", node_hash) + struct.pack("<Q", parent_hash))
 
-    def set_checkpoint(
-        self,
-        tags,
-        now_sec=None,
-        edge_start_sec_override=None,
-        pathway_start_sec_override=None,
-        payload_size=0,
-        span=None,
-    ):
+    def set_checkpoint(self, tags, now_sec=None, edge_start_sec_override=None, pathway_start_sec_override=None):
         """
         type: (List[str], float, float, float) -> None
 
@@ -442,23 +422,306 @@ class DataStreamsCtx:
 
         parent_hash = self.hash
         hash_value = self._compute_hash(tags, parent_hash)
-        if span:
-            span.set_tag_str("pathway.hash", str(hash_value))
         edge_latency_sec = now_sec - self.current_edge_start_sec
         pathway_latency_sec = now_sec - self.pathway_start_sec
         self.hash = hash_value
         self.current_edge_start_sec = now_sec
         self.processor.on_checkpoint_creation(
-            hash_value, parent_hash, tags, now_sec, edge_latency_sec, pathway_latency_sec, payload_size=payload_size
+            hash_value, parent_hash, tags, now_sec, edge_latency_sec, pathway_latency_sec
         )
 
 
-def _atexit(obj=None):
+"""
+We need to pass:
+* root hash
+* parent path hash (including this node)
+* 
+payload = 
+{
+    node: NodeId : {
+        service: ""
+        env: ""
+        host: ""
+    },
+    paths: PathwayInfo : {
+        start: 0
+        duration: 5
+        stats: [ PathwayStats: {
+            edge:  EdgeId: {
+                type: EdgeType: {
+                    UNKNOWN|HTTP|GRPC
+                },
+                name: ""
+            },
+            info: PathayInfo: {
+            },
+            request_latency: 0,
+            response_latency: 0
+        }]
+    }
+}
+"""
+
+"""
+We need to pass:
+* Path information
+
+Metrics are generated
+"""
+
+def inject_context(headers):
+    log.debug("teague.bick - attempting to inject acupath headers into %r", headers)
+    headers[HTTP_HEADER_ACUPATH_PATH_ID] = generate_current_path_id_v0(tags=[])
+
+    current_id, current_time = generate_current_service_node_id_v0()
+    headers[HTTP_HEADER_ACUPATH_PARENT_ID] = current_id
+    headers[HTTP_HEADER_ACUPATH_PARENT_TIME] = current_time 
+
+    root_id, root_time = generate_root_node_id_v0()
+    headers[HTTP_HEADER_ACUPATH_ROOT_ID] = root_id 
+    headers[HTTP_HEADER_ACUPATH_ROOT_TIME] = root_time
+
+    log.debug("teague.bick - injected acupath headers into %r", headers)
+
+
+def generate_current_service_node_id_v0():
+    import json
+    service = os.environ.get("DD_SERVICE", "unnamed-python-service")
+    env = os.environ.get("DD_ENV", "none")
+    host = os.environ.get("DD_HOSTNAME", "")
+
+    service_node = dict(
+            service=service,
+            env=env,
+            host=host,
+        )
+
+    return (json.dumps(service_node), str(time.time()))
+
+
+def generate_node_hash_v0(node_info):
+    import json
+    def get_bytes(s):
+        return bytes(s, encoding="utf-8")
+    
+    if isinstance(node_info, str):
+        node_info = json.loads(node_info)
+
+    b = get_bytes(node_info['service']) + get_bytes(node_info['env']) + get_bytes(node_info['host'])
+    node_hash = fnv1_64(b)
+    return fnv1_64(struct.pack("<Q", node_hash))
+
+
+def generate_current_path_id_v0(tags=[]):
+    from ddtrace.internal import core
+    import json
+    log.debug("teague.bick - a")
+    parent_pathway_hash = int(core.get_item(PARENT_PATHWAY_ID) or 0)
+    log.debug("teague.bick - b")
+
+    current_node = generate_current_service_node_id_v0()[0]
+    log.debug("teague.bick - c")
+
+    def get_bytes(s):
+        return bytes(s, encoding="utf-8")
+
+    b = get_bytes(json.loads(current_node)['service']) + get_bytes(json.loads(current_node)['env']) + get_bytes(json.loads(current_node)['host'])
+    log.debug("teague.bick - d")
+    for t in tags:
+        b += get_bytes(t)
+    log.debug("teague.bick - e")
+    node_hash = fnv1_64(b)
+    log.debug("teague.bick - f")
+    result = fnv1_64(struct.pack("<Q", node_hash) + struct.pack("<Q", parent_pathway_hash))
+    log.debug("teague.bick - g")
+    return result
+
+
+def generate_root_node_id_v0():
+    from ddtrace.internal import core
+    return (str(core.get_item(ROOT_NODE_ID) or generate_current_service_node_id_v0()[0]), str(core.get_item(ROOT_NODE_TIME) or time.time()))
+
+
+def extract_acupath_information(headers):
+    extract_root_node_id_v0(headers)
+    extract_parent_service_node_id_v0(headers)
+    extract_path_info_v0(headers)
+
+
+def extract_root_node_id_v0(headers):
+    from ddtrace.internal import core
+    root_node_id_header = headers[HTTP_HEADER_ACUPATH_ROOT_ID]
+    root_node_time = headers[HTTP_HEADER_ACUPATH_ROOT_TIME]
+    core.set_item(ROOT_NODE_TIME, float(root_node_time))
+    core.set_item(ROOT_NODE_ID, root_node_id_header)
+    log.debug("teague.bick - extracted root id header value: %s", root_node_id_header)
+    log.debug("teague.bick - extracted root time header value: %s", root_node_time)
+
+
+def extract_parent_service_node_id_v0(headers):
+    from ddtrace.internal import core
+    parent_node_id = headers[HTTP_HEADER_ACUPATH_PARENT_ID]
+    parent_time = headers[HTTP_HEADER_ACUPATH_PARENT_TIME]
+    core.set_item(PARENT_NODE_ID, parent_node_id)
+    core.set_item(PARENT_NODE_TIME, float(parent_time))
+    log.debug("teague.bick - extracted parent service info of: %r", parent_node_id)
+    log.debug("teague.bick - extracted parent service time info of: %r", parent_time)
+
+def extract_path_info_v0(headers):
+    from ddtrace.internal import core
+    parent_path_id = headers[HTTP_HEADER_ACUPATH_PATH_ID]
+    core.set_item(PARENT_PATHWAY_ID, parent_path_id)
+
+def generate_parent_service_node_info_v0():
+    from ddtrace.internal import core
+    return (str(core.get_item(PARENT_NODE_ID) or ""), int(core.get_item(PARENT_NODE_TIME) or 0))
+
+
+def generate_payload_v0():
+    # Protobuf 
+    # https://protobuf.dev/getting-started/pythontutorial/
+    """
+    to regenerate the proto:
+    protoc -I=/Users/teague.bick/Workspace/experimental/users/ani.saraf/accupath/architectures/services/dd-go/pb/proto/trace/datapaths/ \
+        --python_out=/Users/teague.bick/Workspace/experimental/users/ani.saraf/accupath/architectures/services/dd-trace-py/ddtrace/internal/acupath/ \
+        --pyi_out=/Users/teague.bick/Workspace/experimental/users/ani.saraf/accupath/architectures/services/dd-trace-py/ddtrace/internal/acupath/ \
+        /Users/teague.bick/Workspace/experimental/users/ani.saraf/accupath/architectures/services/dd-go/pb/proto/trace/datapaths/payload.proto 
+    """
+    log.debug("teague.bick - starting to generate payload")
+    from ddtrace.internal.acupath.payload_pb2 import DataPathAPIPayload
+    from ddtrace.internal.acupath.payload_pb2 import NodeID
+    from ddtrace.internal.acupath.payload_pb2 import EdgeType
+    from ddtrace.internal.acupath.payload_pb2 import EdgeID
+    from ddtrace.internal.acupath.payload_pb2 import PathwayInfo
+    from ddtrace.internal.acupath.payload_pb2 import PathwayStats
+    from ddtrace.internal.acupath.payload_pb2 import Paths
+    import json
+    log.debug("teague.bick - payload 0")
+    now = time.time()
+    log.debug("teague.bick - payload 1")
+    root_info, root_time = generate_root_node_id_v0()
+    log.debug("teague.bick - payload 2")
+    node_info = json.loads(generate_current_service_node_id_v0()[0])
+    log.debug("teague.bick - payload 3")
+    current_node_hash = generate_node_hash_v0(node_info)
+    log.debug("teague.bick - payload 4")
+    root_node_hash = generate_node_hash_v0(root_info)
+    log.debug("teague.bick - payload 5")
+    pathway_hash = generate_current_path_id_v0()
+    log.debug("teague.bick - payload 6")
+    parent_hash, parent_time = generate_parent_service_node_info_v0()
+
+    # ADD THIS NODE TO THE PAYLOAD
+    log.debug("teague.bick - payload a")
+    node = NodeID()
+    node.service = node_info['service']
+    node.env = node_info['env']
+    node.host = node_info['host']
+
+    # REPRESENT THIS EDGE
+    log.debug("teague.bick - payload b")
+    edge = EdgeID()
+    edge.type = EdgeType.HTTP
+    edge.name = "foo"  # What are the requirements for the name?
+
+
+    # REPRESENT PATHWAY
+    log.debug("teague.bick - payload c")
+    pathway = PathwayInfo()
+    pathway.root_service_hash =root_node_hash 
+    pathway.node_hash = current_node_hash 
+    pathway.upstream_pathway_hash = pathway_hash
+    pathway.downstream_pathway_hash = 0
+
+    # PATHWAY STATS
+    log.debug("teague.bick - payload d")
+    pathway_stats = PathwayStats()
+    pathway_stats.info.CopyFrom(pathway)
+    pathway_stats.edge.CopyFrom(edge)
+    full_pathway_latency = LogCollapsingLowestDenseDDSketch(0.00775, bin_limit=2048)
+    full_pathway_latency.add(now - int(float(root_time)* 1e3))
+    edge_latency = LogCollapsingLowestDenseDDSketch(0.00775, bin_limit=2048)
+    edge_latency.add(now - int(float(parent_time)*1e3))
+    from_root_latency = DDSketchProto.to_proto(full_pathway_latency).SerializeToString()
+    from_downstream_latency = DDSketchProto.to_proto(edge_latency).SerializeToString()
+    pathway_stats.request_latency = from_root_latency
+    pathway_stats.response_latency = from_downstream_latency
+
+    # PATHS info
+    log.debug("teague.bick - payload e")
+    paths = Paths()
+    paths.start = int(now - (now%ACCUPATH_COLLECTION_DURATION))
+    paths.duration = ACCUPATH_COLLECTION_DURATION
+    paths.stats.append(pathway_stats)
+
+    # PAYLOAD
+    log.debug("teague.bick - payload f")
+    payload = DataPathAPIPayload()
+    payload.node.CopyFrom(node)
+    payload.paths.CopyFrom(paths)
+
+    msg = "teague.bick - checking initialized: %s" % payload.IsInitialized()
+    log.debug(msg)
+    #log.debug("teague.bick - serializing payload: %s" % payload.__str__())
+    return payload.SerializeToString()
+
+def report_information_to_backend():
+    log.debug("teague.bick - beginning to report to backend")
+    payload = generate_payload_v0()
+    log.debug("teague.bick - payload generated")
+    headers = {"DD-API-KEY": os.environ.get("DD_API_KEY")}
+    log.debug("teague.bick - headers are: %s" % headers)
     try:
-        # Data streams tries to flush data on shutdown.
-        # Adding a try except here to ensure we don't crash the application if the agent is killed before
-        # the application for example.
-        obj.shutdown(SHUTDOWN_TIMEOUT)
-    except Exception as e:
-        if config._data_streams_enabled:
-            log.warning("Failed to shutdown data streams processor: %s", repr(e))
+        conn = get_connection(ACCUPATH_BASE_URL, ACCUPATH_TIMEOUT)
+        conn.request("POST", ACCUPATH_ENDPOINT, payload, headers)
+        resp = get_connection_response(conn)
+    except Exception:
+        raise
+    else:
+        if resp.status == 404:
+            log.error("Error sending data, response is: %s and conn is: %s" % (resp.__dict__, conn.__dict__))
+            return
+        elif resp.status >= 400:
+            log.error(
+                "failed to send data stream stats payload, %s (%s) (%s) response from Datadog agent at %s",
+                resp.status,
+                resp.reason,
+                resp.read(),
+                ACCUPATH_BASE_URL
+            )
+        else:
+            log.debug("sent %s to %s", _human_size(len(payload)), ACCUPATH_BASE_URL)
+
+
+# Quick Fix Constants
+ACCUPATH_BASE_URL = "https://trace-internal.agent.datad0g.com"
+ACCUPATH_TIMEOUT = 10
+ACCUPATH_ENDPOINT = "/api/v0.2/datapaths"
+ACCUPATH_COLLECTION_DURATION = 10  # 10 seconds?
+
+
+
+# Core Constants
+ROOT_NODE_ID = "acupath_root_node_id"
+ROOT_NODE_TIME = "acupath_root_node_time"
+PARENT_NODE_ID = "acupath_parent_node_id"
+PARENT_NODE_TIME = "acupath_parent_node_time"
+PARENT_PATHWAY_ID = "acupath_parent_pathway_id"
+
+# Headers
+HTTP_HEADER_ACUPATH_PARENT_ID = "x-datadog-acupath-parent-id"  # Current node hash
+HTTP_HEADER_ACUPATH_PARENT_TIME = "x-datadog-acupath-parent-time"  # Current node hash
+HTTP_HEADER_ACUPATH_PATH_ID = "x-datadog-acupath-path-id"  # Pathway up to (and incuding) current node hash
+HTTP_HEADER_ACUPATH_ROOT_ID = "x-datadog-acupath-root-id"  # Hash for first node in pathway
+HTTP_HEADER_ACUPATH_ROOT_TIME = "x-datadog-acupath-root-time"  # Hash for first node in pathway
+
+# Assumptions we need to fix/validate eventually
+"""
+* Every tracer supports these headers (especially upstream)
+* Efficiency of data transmitted (hashing/unhashing)
+* Context propagation only woks through the 'datadog' propagator (others not supported -_-)
+* core is implemented and will always find the right items
+* How is information back-propagated?
+* Make the metrics a periodic service (instead of synchronous)
+* Actually aggregate metrics
+"""
