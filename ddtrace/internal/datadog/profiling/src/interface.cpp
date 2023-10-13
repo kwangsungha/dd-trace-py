@@ -305,3 +305,10 @@ ddup_upload()
     g_profile = g_profile_real[g_prof_flag];
     g_profile->reset();
 }
+
+#include "datadog/profiling.h"
+void ddup_init_crashtracker()
+{
+  auto _foo = ddog_prof_crashtracker_init("/home/ubuntu/dev/libdatadog/target/debug/profiling-crashtracking-receiver");
+  (void)_foo;
+}

@@ -60,6 +60,10 @@ IF UNAME_SYSNAME == "Linux":
         void ddup_flush_sample()
         void ddup_set_runtime_id(const char *_id, size_t sz)
         void ddup_upload()
+        void ddup_init_crashtracker()
+
+    def init_crashtracker():
+        ddup_init_crashtracker()
 
     def init(
             service: Optional[str],
