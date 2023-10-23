@@ -273,7 +273,10 @@ class LibDatadogDownload(LibraryDownload):
             arch_include_dir = os.path.join(
                 "ddtrace", "internal", "datadog", "profiling", "libdatadog", arch, "include"
             )
-            return [base_include_dir, arch_include_dir]
+
+            # Override for libddprof
+            libdd_include_dir = os.path.join("vendored", "ddprof", "include")
+            return [base_include_dir, arch_include_dir, libdd_include_dir]
 
         return []
 
