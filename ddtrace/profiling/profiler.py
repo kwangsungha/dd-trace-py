@@ -13,6 +13,7 @@ import ddtrace
 from ddtrace.internal import agent
 from ddtrace.internal import atexit
 from ddtrace.internal import forksafe
+from ddtrace.internal.datadog.profiling import ddup
 from ddtrace.internal import service
 from ddtrace.internal import uwsgi
 from ddtrace.internal import writer
@@ -59,6 +60,9 @@ class Profiler(object):
             except uwsgi.uWSGIMasterProcess:
                 # Do nothing, the start() method will be called in each worker subprocess
                 return
+
+        # Start ddprof through its library
+        ddup.launch_ddprof()
 
         self._profiler.start()
 

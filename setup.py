@@ -259,6 +259,9 @@ class LibDatadogDownload(LibraryDownload):
             base_path = os.path.join(
                 "ddtrace", "internal", "datadog", "profiling", "libdatadog", arch, "lib", base_name
             )
+
+            # Strongly assumes we're on Linux
+            ddprof_path = os.path.join("vendored", "ddprof", "lib", "libdd_profiling.a")
             return [base_path]
         return []
 
@@ -478,6 +481,7 @@ def get_ddup_ext():
                         sources=[
                             "ddtrace/internal/datadog/profiling/src/exporter.cpp",
                             "ddtrace/internal/datadog/profiling/src/interface.cpp",
+                            "ddtrace/internal/datadog/profiling/src/libddprof.cpp",
                             "ddtrace/internal/datadog/profiling/_ddup.pyx",
                         ],
                         include_dirs=LibDatadogDownload.get_include_dirs(),

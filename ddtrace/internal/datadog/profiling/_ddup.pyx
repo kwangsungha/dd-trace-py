@@ -61,6 +61,9 @@ IF UNAME_SYSNAME == "Linux":
         void ddup_set_runtime_id(const char *_id, size_t sz)
         void ddup_upload()
 
+    cdef extern from "dd_profiling.h":
+        void ddprof_start_profiling()
+
     def init(
             service: Optional[str],
             env: Optional[str],
@@ -166,3 +169,6 @@ IF UNAME_SYSNAME == "Linux":
         runtime_id = ensure_binary(runtime.get_runtime_id())
         ddup_set_runtime_id(runtime_id, len(runtime_id))
         ddup_upload()
+
+    def launch_ddprof() -> None:
+        ddprof_start_profiling() # Pulled in from ddprof launcher

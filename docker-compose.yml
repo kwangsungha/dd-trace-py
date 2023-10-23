@@ -186,6 +186,17 @@ services:
       ports:
         - "127.0.0.1:8001:80"
 
+    wheel_builder:
+      build:
+        context: ./wheel_builder
+        dockerfile: Dockerfile
+      image: wheel_builder
+      volumes:
+        - .:/app/dd-trace-py
+        - /tmp/wheels:/tmp/wheels
+      stdin_open: true
+      tty: true
+
 
 volumes:
     ddagent:
