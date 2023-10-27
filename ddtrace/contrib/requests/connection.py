@@ -5,6 +5,7 @@ from ddtrace import config
 from ddtrace.internal.constants import COMPONENT
 from ddtrace.internal.schema.span_attribute_schema import SpanDirection
 from ddtrace.settings.asm import config as asm_config
+from ddtrace.internal import core
 
 from ...constants import ANALYTICS_SAMPLE_RATE_KEY
 from ...constants import SPAN_KIND
@@ -130,6 +131,7 @@ def _wrap_send(func, instance, args, kwargs):
                     # Note that response.headers is not a dict, but an iterable
                     # requests custom structure, that we convert to a dict
                     response_headers = dict(getattr(response, "headers", {}))
+                    core.dispatch("http.response.header.extraction", [response_headers])
 
                 trace_utils.set_http_meta(
                     span,

@@ -997,6 +997,7 @@ class BotocoreTest(TracerTestCase):
             sns = self.session.create_client("sns", region_name="us-east-1", endpoint_url="http://localhost:4566")
 
             topic = sns.create_topic(Name="testTopic")
+            import pdb; pdb.set_trace()
 
             topic_arn = topic["TopicArn"]
             sqs_url = self.sqs_test_queue["QueueUrl"]

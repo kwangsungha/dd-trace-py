@@ -9,6 +9,7 @@ from typing import cast  # noqa:F401
 
 from ddtrace import config
 from ddtrace.tracing._span_link import SpanLink
+from ddtrace.internal import core
 
 from ..constants import AUTO_KEEP
 from ..constants import AUTO_REJECT
@@ -213,12 +214,10 @@ class _DatadogMultiHeader:
 
     @staticmethod
     def _inject(span_context, headers):
-        log.debug("teague.bick - x")
         # type: (Context, Dict[str, str]) -> None
         if span_context.trace_id is None or span_context.span_id is None:
             log.debug("tried to inject invalid context %r", span_context)
             return
-        log.debug("teague.bick - y")
 
         if span_context.trace_id > _MAX_UINT_64BITS:
             # set lower order 64 bits in `x-datadog-trace-id` header. For backwards compatibility these
@@ -229,10 +228,8 @@ class _DatadogMultiHeader:
             span_context._meta[_HIGHER_ORDER_TRACE_ID_BITS] = _get_64_highest_order_bits_as_hex(span_context.trace_id)
         else:
             headers[HTTP_HEADER_TRACE_ID] = str(span_context.trace_id)
-        log.debug("teague.bick - z")
 
-        from ddtrace.internal.accupath.processor import inject_context
-        inject_context(headers)
+        core.dispatch("http.request.header.injection", headers)
 
         headers[HTTP_HEADER_PARENT_ID] = str(span_context.span_id)
         sampling_priority = span_context.sampling_priority
@@ -277,7 +274,6 @@ class _DatadogMultiHeader:
     @staticmethod
     def _extract(headers):
         # type: (Dict[str, str]) -> Optional[Context]
-        log.debug("teague.bick - extracting from headers %r", headers)
         trace_id_str = _extract_header_value(POSSIBLE_HTTP_HEADER_TRACE_IDS, headers)
         if trace_id_str is None:
             return None
@@ -286,11 +282,7 @@ class _DatadogMultiHeader:
         except ValueError:
             trace_id = 0
 
-        from ddtrace.internal.accupath.processor import extract_accupath_information
-        extract_accupath_information(headers)
-        from ddtrace.internal.accupath.processor import report_information_to_backend
-        report_information_to_backend()
-
+        core.dispatch("http.request.header.extraction", headers)
 
         if trace_id <= 0 or trace_id > _MAX_UINT_64BITS:
             log.warning(
@@ -956,7 +948,6 @@ class HTTPPropagator(object):
         if not headers:
             return Context()
         try:
-            log.debug("teague.bick - trying to extract context propagation headers")
             normalized_headers = {name.lower(): v for name, v in headers.items()}
 
             # tracer configured to extract first only
