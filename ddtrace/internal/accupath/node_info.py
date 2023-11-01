@@ -65,13 +65,18 @@ class NodeInfo:
     def get_parent_request_out_time(cls):
         return core.get_item(PARENT_NODE_REQUEST_OUT_TIME)
 
-    def to_hash(self):
-        b = self.to_bytes()
+    def to_hash(self, isRoot=False):
+        log.debug("teague.bick - b")
+        b = self.to_bytes(isRoot=isRoot)
+        log.debug("teague.bick - c")
         node_hash = fnv1_64(b)
-        return fnv1_64(struct.pack("<Q", node_hash))
+        return node_hash# fnv1_64(struct.pack("<Q", b))
     
-    def to_bytes(self):
-        return get_bytes(self.service) + get_bytes(self.env) + get_bytes(self.hostname)
+    def to_bytes(self, isRoot=False):
+        if not isRoot:
+            return get_bytes(self.service) + get_bytes(self.env) + get_bytes(self.hostname)
+        else:
+            return get_bytes(self.service)
 
     def to_string_dict(self):
         return json.dumps({"service": self.service, "env": self.env, "hostname": self.hostname})

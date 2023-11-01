@@ -23,7 +23,10 @@ from ddtrace.internal.accupath.payload_pb2 import EdgeID
 from ddtrace.internal.accupath.payload_pb2 import PathwayInfo
 from ddtrace.internal.accupath.payload_pb2 import PathwayStats
 from ddtrace.internal.accupath.payload_pb2 import Paths
+from ddtrace.internal.accupath.payload_pb2 import Latencies
+from ddtrace.internal.accupath.payload_pb2 import PathDirection
 
+from ddtrace.internal.accupath.path_info import generate_request_pathway_id
 
 log = get_logger(__name__)
 
@@ -64,18 +67,27 @@ class _AccuPathProcessor(PeriodicService):
         self._flush_stats()
 
     def _flush_stats(self):
+        log.debug("teague.bick - calling _flush_stats a")
         headers = {"DD-API-KEY": os.environ.get("DD_API_KEY")}
+        log.debug("teague.bick - calling _flush_stats b")
         with self._lock:
             for bucket_time, bucket in self._buckets.items():
                 for path_info_key, bucket in bucket.pathway_stats.items():
-                    payload = generate_payload_v0(
-                        bucket_start_time=bucket_time,
-                        bucket_duration=ACCUPATH_COLLECTION_DURATION,
-                        current_node_info = NodeInfo.from_local_env(),
-                        root_node_info = NodeInfo.get_root_node_info(),
-                        path_key_info = path_info_key,
-                        pathway_stat_bucket = bucket
-                        )
+                    log.debug("teague.bick - calling _flush_stats c")
+                    payload=None
+                    try:
+                        payload = generate_payload_v0(
+                            bucket_start_time=bucket_time,
+                            bucket_duration=ACCUPATH_COLLECTION_DURATION,
+                            current_node_info = NodeInfo.from_local_env(),
+                            root_node_info = NodeInfo.get_root_node_info(),
+                            path_key_info = path_info_key,
+                            pathway_stat_bucket = bucket
+                            )
+                    except Exception as e:
+                        log.debug("Ran into an issue creating payloads", exc_info=True)
+                        return 
+                    log.debug("teague.bick - calling _flush_stats d")
                     try:
                         conn = self._conn()
                         conn.request("POST", ACCUPATH_ENDPOINT, payload, headers)
@@ -124,9 +136,11 @@ def generate_payload_v0(
         --pyi_out=/Users/accupath/Workspace/experimental/users/ani.saraf/accupath/architectures/services/dd-trace-py/ddtrace/internal/accupath/ \
         /Users/accupath/Workspace/experimental/users/ani.saraf/accupath/architectures/services/dd-go/pb/proto/trace/datapaths/payload.proto
     """
-    root_node_hash = root_node_info.to_hash()
+    log.debug("Teague.bick - A")
+    root_node_hash = root_node_info.to_hash(isRoot=True)
     current_node_hash = current_node_info.to_hash()
 
+    log.info("teague.bick - generating info")
 
     # ADD THIS NODE TO THE PAYLOAD
     node = NodeID()
@@ -142,58 +156,93 @@ def generate_payload_v0(
     # REPRESENT PATHWAY
     pathway = PathwayInfo()
     pathway.root_service_hash = root_node_hash
-    pathway.node_hash = current_node_hash
+    pathway.node_hash = generate_request_pathway_id(current_node_info=current_node_info, request_path_info=path_key_info.request_pathway_id)
     pathway.upstream_pathway_hash = path_key_info.request_pathway_id
     pathway.downstream_pathway_hash = path_key_info.response_pathway_id
 
+    #  LATENCIES
+    response_latencies = Latencies()
+    request_latencies = Latencies()
+
+    root_to_request_in_latency_sketch = pathway_stat_bucket.root_to_request_in_latency
+    root_to_request_in_latency_proto = DDSketchProto.to_proto(root_to_request_in_latency_sketch)
+
+    root_to_request_in_latency_errors_sketch = pathway_stat_bucket.root_to_request_in_latency_errors
+    root_to_request_in_latency_errors_proto = DDSketchProto.to_proto(root_to_request_in_latency_errors_sketch)
+
+    root_to_request_out_latency_sketch = pathway_stat_bucket.root_to_request_out_latency
+    root_to_request_out_latency_proto = DDSketchProto.to_proto(root_to_request_out_latency_sketch)
+
+    root_to_request_out_latency_errors_sketch = pathway_stat_bucket.root_to_request_out_latency_errors
+    root_to_request_out_latency_errors_proto = DDSketchProto.to_proto(root_to_request_out_latency_errors_sketch)
+
+    root_to_response_in_latency_sketch = pathway_stat_bucket.root_to_response_in_latency
+    root_to_response_in_latency_proto = DDSketchProto.to_proto(root_to_response_in_latency_sketch)
+
+    root_to_response_in_latency_errors_sketch = pathway_stat_bucket.root_to_response_in_latency_errors
+    root_to_response_in_latency_errors_proto = DDSketchProto.to_proto(root_to_response_in_latency_errors_sketch)
+
+    root_to_response_out_latency_sketch = pathway_stat_bucket.root_to_response_out_latency
+    root_to_response_out_latency_proto = DDSketchProto.to_proto(root_to_response_out_latency_sketch)
+
+    root_to_response_out_latency_errors_sketch = pathway_stat_bucket.root_to_response_out_latency_errors
+    root_to_response_out_latency_errors_proto = DDSketchProto.to_proto(root_to_response_out_latency_errors_sketch)
+
+    response_latencies.latency_in = root_to_response_in_latency_proto.SerializeToString()
+    response_latencies.error_latency_in = root_to_response_in_latency_errors_proto.SerializeToString()
+    response_latencies.latency_out = root_to_response_out_latency_proto.SerializeToString()
+    response_latencies.error_latency_out = root_to_response_out_latency_errors_proto.SerializeToString()
+    request_latencies.latency_in = root_to_request_in_latency_proto.SerializeToString()
+    request_latencies.error_latency_in = root_to_request_in_latency_errors_proto.SerializeToString()
+    request_latencies.latency_out = root_to_request_out_latency_proto.SerializeToString()
+    request_latencies.error_latency_out = root_to_request_out_latency_errors_proto.SerializeToString()
+
+
     # PATHWAY STATS
-    pathway_stats = PathwayStats()
-    pathway_stats.info.CopyFrom(pathway)
-    pathway_stats.edge.CopyFrom(edge)
+    request_pathway_stats = PathwayStats()
+    request_pathway_stats.edge.CopyFrom(edge)
+    request_pathway_stats.info.CopyFrom(pathway)
+    request_pathway_stats.latencies.CopyFrom(request_latencies)
+
+    response_pathway_stats = PathwayStats()
+    response_pathway_stats.edge.CopyFrom(edge)
+    response_pathway_stats.info.CopyFrom(pathway)
+    response_pathway_stats.latencies.CopyFrom(response_latencies)
+
+    # PATH DIRECTIONS
+    request_path_direction = PathDirection.REQUEST
+    response_path_direction = PathDirection.RESPONSE
+
+    """
+    # very first attempt
     request_latency_sketch = pathway_stat_bucket.request_latency
     response_latency_sketch = pathway_stat_bucket.response_latency
     request_latency = DDSketchProto.to_proto(request_latency_sketch).SerializeToString()
     response_latency = DDSketchProto.to_proto(response_latency_sketch).SerializeToString()
     pathway_stats.request_latency = request_latency
     pathway_stats.response_latency = response_latency
+    """
 
     # PATHS info
-    paths = Paths()
-    paths.start = bucket_start_time
-    paths.duration = bucket_duration
-    paths.stats.append(pathway_stats)
+    request_path = Paths()
+    request_path.start = bucket_start_time
+    request_path.duration = bucket_duration
+    request_path.direction = request_path_direction
+    request_path.stats.append(request_pathway_stats)
+
+    response_path = Paths()
+    response_path.start = bucket_start_time
+    response_path.duration = bucket_duration
+    response_path.direction = response_path_direction
+    response_path.stats.append(response_pathway_stats)
 
     # PAYLOAD
     payload = DataPathAPIPayload()
     payload.node.CopyFrom(node)
-    payload.paths.CopyFrom(paths)
+    payload.paths.append(request_path)
+    payload.paths.append(response_path)
 
     return payload.SerializeToString()
-
-
-def report_information_to_backend():
-    payload = generate_payload_v0()
-    headers = {"DD-API-KEY": os.environ.get("DD_API_KEY")}
-    try:
-        conn = get_connection(ACCUPATH_BASE_URL, ACCUPATH_TIMEOUT)
-        conn.request("POST", ACCUPATH_ENDPOINT, payload, headers)
-        resp = get_connection_response(conn)
-    except Exception:
-        raise
-    else:
-        if resp.status == 404:
-            log.error("Error sending data, response is: %s and conn is: %s" % (resp.__dict__, conn.__dict__))
-            return
-        elif resp.status >= 400:
-            log.error(
-                "failed to send data stream stats payload, %s (%s) (%s) response from Datadog agent at %s",
-                resp.status,
-                resp.reason,
-                resp.read(),
-                ACCUPATH_BASE_URL
-            )
-        else:
-            log.debug("sent %s to %s", _human_size(len(payload)), ACCUPATH_BASE_URL)
 
 
 _processor_singleton = _AccuPathProcessor()

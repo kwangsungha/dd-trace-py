@@ -13,7 +13,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\rpayload.proto\x12\x0b\x64\x61tapathspb\"Z\n\x12\x44\x61taPathAPIPayload\x12!\n\x04node\x18\x01 \x01(\x0b\x32\x13.datapathspb.NodeID\x12!\n\x05paths\x18\x02 \x01(\x0b\x32\x12.datapathspb.Paths\"4\n\x06NodeID\x12\x0f\n\x07service\x18\x01 \x01(\t\x12\x0b\n\x03\x65nv\x18\x02 \x01(\t\x12\x0c\n\x04host\x18\x03 \x01(\t\";\n\x06\x45\x64geID\x12#\n\x04type\x18\x01 \x01(\x0e\x32\x15.datapathspb.EdgeType\x12\x0c\n\x04name\x18\x02 \x01(\t\"{\n\x0bPathwayInfo\x12\x19\n\x11root_service_hash\x18\x01 \x01(\x04\x12\x11\n\tnode_hash\x18\x02 \x01(\x04\x12\x1d\n\x15upstream_pathway_hash\x18\x03 \x01(\x04\x12\x1f\n\x17\x64ownstream_pathway_hash\x18\x04 \x01(\x04\"R\n\x05Paths\x12\r\n\x05start\x18\x01 \x01(\x04\x12\x10\n\x08\x64uration\x18\x02 \x01(\x04\x12(\n\x05stats\x18\x03 \x03(\x0b\x32\x19.datapathspb.PathwayStats\"\x8c\x01\n\x0cPathwayStats\x12!\n\x04\x65\x64ge\x18\x01 \x01(\x0b\x32\x13.datapathspb.EdgeID\x12&\n\x04info\x18\x02 \x01(\x0b\x32\x18.datapathspb.PathwayInfo\x12\x17\n\x0frequest_latency\x18\x03 \x01(\x0c\x12\x18\n\x10response_latency\x18\x04 \x01(\x0c\"X\n\x12UnresolvedDataPath\x12\x0f\n\x07\x61pi_key\x18\x01 \x01(\t\x12\x31\n\x08\x64\x61tapath\x18\x02 \x01(\x0b\x32\x1f.datapathspb.DataPathAPIPayload\"T\n\x0f\x44\x61taPathPayload\x12\x0e\n\x06org_id\x18\x01 \x01(\x05\x12\x31\n\x08\x64\x61tapath\x18\x02 \x01(\x0b\x32\x1f.datapathspb.DataPathAPIPayload*+\n\x08\x45\x64geType\x12\x0b\n\x07UNKNOWN\x10\x00\x12\x08\n\x04HTTP\x10\x01\x12\x08\n\x04GRPC\x10\x02\x42/Z-github.com/DataDog/dd-go/pb/trace/datapathspbb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\rpayload.proto\x12\x0b\x64\x61tapathspb\"Z\n\x12\x44\x61taPathAPIPayload\x12!\n\x04node\x18\x01 \x01(\x0b\x32\x13.datapathspb.NodeID\x12!\n\x05paths\x18\x02 \x03(\x0b\x32\x12.datapathspb.Paths\"4\n\x06NodeID\x12\x0f\n\x07service\x18\x01 \x01(\t\x12\x0b\n\x03\x65nv\x18\x02 \x01(\t\x12\x0c\n\x04host\x18\x03 \x01(\t\";\n\x06\x45\x64geID\x12#\n\x04type\x18\x01 \x01(\x0e\x32\x15.datapathspb.EdgeType\x12\x0c\n\x04name\x18\x02 \x01(\t\"{\n\x0bPathwayInfo\x12\x19\n\x11root_service_hash\x18\x01 \x01(\x04\x12\x11\n\tnode_hash\x18\x02 \x01(\x04\x12\x1d\n\x15upstream_pathway_hash\x18\x03 \x01(\x04\x12\x1f\n\x17\x64ownstream_pathway_hash\x18\x04 \x01(\x04\"\x81\x01\n\x05Paths\x12\r\n\x05start\x18\x01 \x01(\x04\x12\x10\n\x08\x64uration\x18\x02 \x01(\x04\x12-\n\tdirection\x18\x03 \x01(\x0e\x32\x1a.datapathspb.PathDirection\x12(\n\x05stats\x18\x04 \x03(\x0b\x32\x19.datapathspb.PathwayStats\"\x84\x01\n\x0cPathwayStats\x12!\n\x04\x65\x64ge\x18\x01 \x01(\x0b\x32\x13.datapathspb.EdgeID\x12&\n\x04info\x18\x02 \x01(\x0b\x32\x18.datapathspb.PathwayInfo\x12)\n\tlatencies\x18\x03 \x01(\x0b\x32\x16.datapathspb.Latencies\"X\n\x12UnresolvedDataPath\x12\x0f\n\x07\x61pi_key\x18\x01 \x01(\t\x12\x31\n\x08\x64\x61tapath\x18\x02 \x01(\x0b\x32\x1f.datapathspb.DataPathAPIPayload\"T\n\x0f\x44\x61taPathPayload\x12\x0e\n\x06org_id\x18\x01 \x01(\x05\x12\x31\n\x08\x64\x61tapath\x18\x02 \x01(\x0b\x32\x1f.datapathspb.DataPathAPIPayload\"^\n\x0eStoredNodeInfo\x12\x0f\n\x07service\x18\x01 \x01(\t\x12\x0b\n\x03\x65nv\x18\x02 \x01(\t\x12\x15\n\rupstream_hash\x18\x03 \x01(\x04\x12\x17\n\x0f\x64ownstream_hash\x18\x04 \x01(\x04\"i\n\tLatencies\x12\x12\n\nlatency_in\x18\x01 \x01(\x0c\x12\x18\n\x10\x65rror_latency_in\x18\x02 \x01(\x0c\x12\x13\n\x0blatency_out\x18\x03 \x01(\x0c\x12\x19\n\x11\x65rror_latency_out\x18\x04 \x01(\x0c*+\n\x08\x45\x64geType\x12\x0b\n\x07UNKNOWN\x10\x00\x12\x08\n\x04HTTP\x10\x01\x12\x08\n\x04GRPC\x10\x02**\n\rPathDirection\x12\x0b\n\x07REQUEST\x10\x00\x12\x0c\n\x08RESPONSE\x10\x01\x42/Z-github.com/DataDog/dd-go/pb/trace/datapathspbb\x06proto3')
 
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, globals())
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'payload_pb2', globals())
@@ -21,8 +21,10 @@ if _descriptor._USE_C_DESCRIPTORS == False:
 
   DESCRIPTOR._options = None
   DESCRIPTOR._serialized_options = b'Z-github.com/DataDog/dd-go/pb/trace/datapathspb'
-  _EDGETYPE._serialized_start=765
-  _EDGETYPE._serialized_end=808
+  _EDGETYPE._serialized_start=1008
+  _EDGETYPE._serialized_end=1051
+  _PATHDIRECTION._serialized_start=1053
+  _PATHDIRECTION._serialized_end=1095
   _DATAPATHAPIPAYLOAD._serialized_start=30
   _DATAPATHAPIPAYLOAD._serialized_end=120
   _NODEID._serialized_start=122
@@ -31,12 +33,16 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   _EDGEID._serialized_end=235
   _PATHWAYINFO._serialized_start=237
   _PATHWAYINFO._serialized_end=360
-  _PATHS._serialized_start=362
-  _PATHS._serialized_end=444
-  _PATHWAYSTATS._serialized_start=447
-  _PATHWAYSTATS._serialized_end=587
-  _UNRESOLVEDDATAPATH._serialized_start=589
-  _UNRESOLVEDDATAPATH._serialized_end=677
-  _DATAPATHPAYLOAD._serialized_start=679
-  _DATAPATHPAYLOAD._serialized_end=763
+  _PATHS._serialized_start=363
+  _PATHS._serialized_end=492
+  _PATHWAYSTATS._serialized_start=495
+  _PATHWAYSTATS._serialized_end=627
+  _UNRESOLVEDDATAPATH._serialized_start=629
+  _UNRESOLVEDDATAPATH._serialized_end=717
+  _DATAPATHPAYLOAD._serialized_start=719
+  _DATAPATHPAYLOAD._serialized_end=803
+  _STOREDNODEINFO._serialized_start=805
+  _STOREDNODEINFO._serialized_end=899
+  _LATENCIES._serialized_start=901
+  _LATENCIES._serialized_end=1006
 # @@protoc_insertion_point(module_scope)
