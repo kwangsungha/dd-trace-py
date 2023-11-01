@@ -57,7 +57,7 @@ class _AccuPathProcessor(PeriodicService):
         Add the data into buckets
         """
         with self._lock:
-            for time_index, path_key, metric_name, metric_value in items:
+            for time_index, path_key, metric_name, metric_value, success_or_error in items:
                 bucket_time_ns = time_index - (time_index % self._bucket_size_ns)
                 stats = self._buckets[bucket_time_ns].pathway_stats[path_key]
                 if hasattr(stats, metric_name):

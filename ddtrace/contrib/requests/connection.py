@@ -131,7 +131,7 @@ def _wrap_send(func, instance, args, kwargs):
                     # Note that response.headers is not a dict, but an iterable
                     # requests custom structure, that we convert to a dict
                     response_headers = dict(getattr(response, "headers", {}))
-                    core.dispatch("http.response.header.extraction", [response_headers])
+                    core.dispatch("http.response.header.extraction", [response_headers, response.status_code])
 
                 trace_utils.set_http_meta(
                     span,

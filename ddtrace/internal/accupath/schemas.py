@@ -2,6 +2,7 @@ import json
 
 from ddtrace.internal.accupath.stats import _checkpoint_diff, _submit_service_metrics
 from ddtrace.internal.accupath.checkpoints import _time_checkpoint
+from ddtrace.internal.accupath.checkpoints import _status_checkpoint
 from ddtrace.internal.accupath.context_propagation import inject_context, extract_context
 from ddtrace.internal.accupath.generators import generate_time
 from ddtrace.internal.accupath.node_info import NodeInfo
@@ -12,6 +13,7 @@ _service_schema = {
     "name": "service",
     "observation_generators": [
         ("_time_checkpoint", _time_checkpoint),
+        ("_status_checkpoint", _status_checkpoint),
     ],
     "metric_generators": [
         ("_checkpoint_diff", _checkpoint_diff),
@@ -117,6 +119,10 @@ _service_schema = {
         ("http.request.header.injection", "request_out", '_time_checkpoint'),
         ("http.response.header.extraction", "response_in", '_time_checkpoint'),
         ("http.response.header.injection", "response_out", '_time_checkpoint'),
+        #("http.request.header.extraction", "request_in_status", '_status_checkpoint'),  # (triggering event, checkpoint name, checkpoint action)
+        #("http.request.header.injection", "request_out_status", '_status_checkpoint'),
+        ("http.response.header.extraction", "response_in_status", '_status_checkpoint'),
+        ("http.response.header.injection", "response_out_status", '_status_checkpoint'),
     ],
     "metrics": [
         (

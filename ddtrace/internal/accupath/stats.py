@@ -72,8 +72,10 @@ def _submit_service_metrics(*args, **kwargs):
     request_out_time = core.get_item("accupath.service.request_out") or 0
     log.debug("accupath - _submit_service_metrics called d")
     response_in_time = core.get_item("accupath.service.response_in") or 0
+    response_in_status = core.get_item("accupath.service.response_status") or False
     log.debug("accupath - _submit_service_metrics called e")
-    #response_out_time = core.get_item("accupath.service.response_out")
+    response_out_time = core.get_item("accupath.service.response_out") or 0
+    response_out_status = core.get_item("accupath.service.response_out_status") or False
 
     request_pathway_id = core.get_item("accupath.service.request_path_info") or 0
     log.debug("accupath - _submit_service_metrics called f")
@@ -86,16 +88,24 @@ def _submit_service_metrics(*args, **kwargs):
         (request_in_time, path_key, "request_latency", (request_in_time - root_request_out_time)),
         (response_in_time, path_key, "response_latency", (response_in_time - request_out_time)),
         (request_in_time, path_key, "root_to_request_in_latency", (request_in_time - root_request_out_time)),
-        (request_in_time, path_key, "root_to_request_in_latency_errors", (request_in_time - root_request_out_time)),
+        #(request_in_time, path_key, "root_to_request_in_latency_errors", (request_in_time - root_request_out_time)),
         (request_in_time, path_key, "root_to_request_out_latency", (request_out_time - root_request_out_time)),
-        (request_in_time, path_key, "root_to_request_out_latency_errors", (request_out_time - root_request_out_time)),
-        (response_in_time, path_key, "root_to_response_in_latency", (response_in_time - root_request_out_time)),
-        (response_in_time, path_key, "root_to_response_in_latency_errors", (response_in_time - root_request_out_time)),
-        (response_in_time, path_key, "root_to_response_out_latency", (response_in_time - root_request_out_time)),
-        (response_in_time, path_key, "root_to_response_out_latency_errors", (response_in_time - root_request_out_time)),
-        ()
-
+        #(request_in_time, path_key, "root_to_request_out_latency_errors", (request_out_time - root_request_out_time)),
     ]
+
+    if response_in_status:
+        log.debug("accupath - _submit_service_metrics called h - a")
+        to_submit.extend([
+            (response_in_time, path_key, "root_to_response_in_latency", (response_in_time - root_request_out_time)),
+            (response_in_time, path_key, "root_to_response_out_latency", (response_in_time - root_request_out_time)),
+        ])
+    else:
+        log.debug("accupath - _submit_service_metrics called h - b")
+        to_submit.extend([
+            (response_in_time, path_key, "root_to_response_in_latency_errors", (response_in_time - root_request_out_time)),
+            (response_in_time, path_key, "root_to_response_out_latency_errors", (response_in_time - root_request_out_time)),
+        ])
+
     log.debug("accupath - _submit_service_metrics called i")
     _accupath_processor.add_bucket_data(to_submit)
     log.debug("accupath - _submit_service_metrics called j")
