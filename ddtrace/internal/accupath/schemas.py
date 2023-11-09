@@ -158,7 +158,7 @@ _service_schema = {
             "response_in_to_response_out_latency",
             "_checkpoint_diff",
             ("response_in", "response_out"),
-            None,  # Event id to emit after
+            "submit_metrics",  # Event id to emit after
         )
     ],
     "metric_submissions": [

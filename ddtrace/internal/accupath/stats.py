@@ -63,6 +63,8 @@ def _checkpoint_diff(metric_record_id, observation_coordinates, dispatch_event_i
 
 
 def _submit_service_metrics(*args, **kwargs):
+    if core.get_item("submitted_metrics"):
+        return
     log.debug("accupath - _submit_service_metrics called a")
     root_request_out_time = core.get_item("accupath.service.root_out") or 0
     log.debug("accupath - _submit_service_metrics called b")
@@ -85,31 +87,35 @@ def _submit_service_metrics(*args, **kwargs):
     path_key = PathKey(request_pathway_id=request_pathway_id, response_pathway_id=response_pathway_id)
     log.debug("accupath - _submit_service_metrics called h")
     to_submit = [
-        (request_in_time, path_key, "request_latency", (request_in_time - root_request_out_time)),
-        (response_in_time, path_key, "response_latency", (response_in_time - request_out_time)),
-        (request_in_time, path_key, "root_to_request_in_latency", (request_in_time - root_request_out_time)),
+        (request_in_time, path_key, "request_latency", max(0, (request_in_time - root_request_out_time))),
+        (response_in_time, path_key, "response_latency", max(0, (response_in_time - request_out_time))),
+        (request_in_time, path_key, "root_to_request_in_latency", max(0, (request_in_time - root_request_out_time))),
         #(request_in_time, path_key, "root_to_request_in_latency_errors", (request_in_time - root_request_out_time)),
-        (request_in_time, path_key, "root_to_request_out_latency", (request_out_time - root_request_out_time)),
+        (request_in_time, path_key, "root_to_request_out_latency", max(0, (request_out_time - root_request_out_time))),
         #(request_in_time, path_key, "root_to_request_out_latency_errors", (request_out_time - root_request_out_time)),
     ]
 
     if response_in_status:
         log.debug("accupath - _submit_service_metrics called h - a")
         to_submit.extend([
-            (response_in_time, path_key, "root_to_response_in_latency", (response_in_time - root_request_out_time)),
-            (response_in_time, path_key, "root_to_response_out_latency", (response_in_time - root_request_out_time)),
+            (response_in_time, path_key, "root_to_response_in_latency", max(0, (response_in_time - root_request_out_time))),
+            (response_in_time, path_key, "root_to_response_out_latency", max(0, (response_in_time - root_request_out_time))),
         ])
     else:
         log.debug("accupath - _submit_service_metrics called h - b")
         to_submit.extend([
-            (response_in_time, path_key, "root_to_response_in_latency_errors", (response_in_time - root_request_out_time)),
-            (response_in_time, path_key, "root_to_response_out_latency_errors", (response_in_time - root_request_out_time)),
+            (response_in_time, path_key, "root_to_response_in_latency_errors", max(0, (response_in_time - root_request_out_time))),
+            (response_in_time, path_key, "root_to_response_out_latency_errors", max(0, (response_in_time - root_request_out_time))),
         ])
 
     log.debug("accupath - _submit_service_metrics called i")
     _accupath_processor.add_bucket_data(to_submit)
     log.debug("accupath - _submit_service_metrics called j")
+    core.set_item("submitted_metrics", True)
 
+def _add_only_if_nonempty(to_submit, tuple):
+    if tuple[-1] >= 0:
+        to_submit.append(tuple)
 
 _buckets = defaultdict(
     lambda: Bucket(defaultdict(PathwayStats))

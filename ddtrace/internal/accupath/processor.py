@@ -57,8 +57,10 @@ class _AccuPathProcessor(PeriodicService):
         Add the data into buckets
         """
         try:
+            log.debug("teague.bick - calling add_bucket")
             with self._lock:
                 for time_index, path_key, metric_name, metric_value in items:
+                    log.debug("teague.bick - adding a bucket")
                     bucket_time_ns = time_index - (time_index % self._bucket_size_ns)
                     stats = self._buckets[bucket_time_ns].pathway_stats[path_key]
                     if hasattr(stats, metric_name):
@@ -67,15 +69,19 @@ class _AccuPathProcessor(PeriodicService):
             log.debug("teague.bick - error", exc_info=True)
 
     def periodic(self):
-        self._flush_stats()
+        try:
+            self._flush_stats()
+        except Exception as e:
+            log.debug("teague.bick - error _flush_stats", exc_info=True)
 
     def _flush_stats(self):
         log.debug("teague.bick - calling _flush_stats a")
         headers = {"DD-API-KEY": os.environ.get("DD_API_KEY")}
         log.debug("teague.bick - calling _flush_stats b")
+        to_del = set()
         with self._lock:
             for bucket_time, bucket in self._buckets.items():
-                for path_info_key, bucket in bucket.pathway_stats.items():
+                for path_info_key, actual_bucket in bucket.pathway_stats.items():
                     log.debug("teague.bick - calling _flush_stats c")
                     payload=None
                     try:
@@ -85,7 +91,7 @@ class _AccuPathProcessor(PeriodicService):
                             current_node_info = NodeInfo.from_local_env(),
                             root_node_info = NodeInfo.get_root_node_info(),
                             path_key_info = path_info_key,
-                            pathway_stat_bucket = bucket
+                            pathway_stat_bucket = actual_bucket
                             )
                     except Exception as e:
                         log.debug("Ran into an issue creating payloads", exc_info=True)
@@ -111,7 +117,13 @@ class _AccuPathProcessor(PeriodicService):
                             )
                         else:
                             log.debug("accupath sent %s to %s", _human_size(len(payload)), ACCUPATH_BASE_URL)
-
+                            to_del.add(bucket_time)
+            for b_t in to_del:
+                log.debug("teague.bick - bucket deletion")
+                log.debug(f"teague.bick - {self._buckets.keys()}")
+                log.debug(f"teague.bick - {b_t}")
+                if b_t in self._buckets:
+                    del self._buckets[b_t]
 
     def _conn(self):
         conn = get_connection(ACCUPATH_BASE_URL, ACCUPATH_TIMEOUT)
