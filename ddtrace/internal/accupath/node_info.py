@@ -7,7 +7,7 @@ from ddtrace.internal.logger import get_logger
 from ddtrace.internal.utils.fnv import fnv1_64
 
 
-ROOT_NODE_ID = "accupath_root_node_id"
+ROOT_NODE_ID = "accupath.service.root_node_info"#accupath_root_node_id"
 ROOT_NODE_REQUEST_OUT_TIME = "accupath.service.root_out"
 PARENT_NODE_ID = "accupath_parent_node_id"
 PARENT_NODE_REQUEST_OUT_TIME = "accupath_parent_node_request_out_time"
@@ -55,7 +55,10 @@ class NodeInfo:
 
     @classmethod
     def get_root_node_info(cls):
-        return core.get_item(ROOT_NODE_ID) or cls.from_local_env()
+
+        root_node_info = core.get_item(ROOT_NODE_ID) or cls.from_local_env()
+
+        return root_node_info
     
     @classmethod
     def get_parent_node_info(cls):

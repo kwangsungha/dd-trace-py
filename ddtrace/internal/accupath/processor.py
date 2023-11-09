@@ -89,7 +89,7 @@ class _AccuPathProcessor(PeriodicService):
                             bucket_start_time=bucket_time,
                             bucket_duration=ACCUPATH_COLLECTION_DURATION,
                             current_node_info = NodeInfo.from_local_env(),
-                            root_node_info = NodeInfo.get_root_node_info(),
+                            root_node_info = path_info_key.root_node_info,
                             path_key_info = path_info_key,
                             pathway_stat_bucket = actual_bucket
                             )
@@ -152,6 +152,7 @@ def generate_payload_v0(
         /Users/accupath/Workspace/experimental/users/ani.saraf/accupath/architectures/services/dd-go/pb/proto/trace/datapaths/payload.proto
     """
     log.debug("Teague.bick - A")
+    log.debug(f"teague.bick - payload {root_node_info.__dict__}")
     root_node_hash = root_node_info.to_hash(isRoot=True)
     current_node_hash = current_node_info.to_hash()
 

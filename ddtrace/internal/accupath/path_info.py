@@ -55,9 +55,10 @@ def generate_response_pathway_id(*args, **kwargs):
 
 
 class PathKey:
-    def __init__(self, request_pathway_id, response_pathway_id):
+    def __init__(self, request_pathway_id, response_pathway_id, root_node_info):
         self.request_pathway_id = request_pathway_id
         self.response_pathway_id = response_pathway_id
+        self.root_node_info = root_node_info
 
     def __eq__(self, __value: object) -> bool:
         if not isinstance(__value, PathKey):

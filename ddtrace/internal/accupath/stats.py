@@ -7,6 +7,7 @@ from ddtrace.internal.logger import get_logger
 from ddtrace.internal import core
 from ddtrace.internal.accupath.path_info import PathKey, PathInfo, generate_response_pathway_id, generate_request_pathway_id
 from ddtrace.internal.accupath.processor import _processor_singleton as _accupath_processor
+from ddtrace.internal.accupath.node_info import NodeInfo
 
 from ddsketch import LogCollapsingLowestDenseDDSketch
 
@@ -84,7 +85,12 @@ def _submit_service_metrics(*args, **kwargs):
     response_pathway_id = core.get_item("accupath.service.response_path_info") or 0
     log.debug("accupath - _submit_service_metrics called g")
 
-    path_key = PathKey(request_pathway_id=request_pathway_id, response_pathway_id=response_pathway_id)
+    try:
+        root_node_info = NodeInfo.from_string_dict(NodeInfo.get_root_node_info())
+
+        path_key = PathKey(request_pathway_id=request_pathway_id, response_pathway_id=response_pathway_id, root_node_info=root_node_info)
+    except Exception:
+        log.debug("error", exc_info=True)
     log.debug("accupath - _submit_service_metrics called h")
     to_submit = [
         (request_in_time, path_key, "request_latency", max(0, (request_in_time - root_request_out_time))),
@@ -112,10 +118,6 @@ def _submit_service_metrics(*args, **kwargs):
     _accupath_processor.add_bucket_data(to_submit)
     log.debug("accupath - _submit_service_metrics called j")
     core.set_item("submitted_metrics", True)
-
-def _add_only_if_nonempty(to_submit, tuple):
-    if tuple[-1] >= 0:
-        to_submit.append(tuple)
 
 _buckets = defaultdict(
     lambda: Bucket(defaultdict(PathwayStats))
