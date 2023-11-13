@@ -22,26 +22,64 @@ class StackRenderer : public RendererInterface {
   }
 
   void render_stack_begin() override {
+    ddup_start_sample(512); // TODO magic numbers
   }
 
   void render_python_frame(std::string_view name, std::string_view file, uint64_t line) override {
+    ddup_push_frame(name.data(), file.data(), 0, line);
   }
 
   void render_native_frame(std::string_view name, std::string_view file, uint64_t line) override {
+    ddup_push_frame(name.data(), file.data(), 0, line);
   }
 
   void render_cpu_time(uint64_t cpu_time) override {
+    ddup_push_cputime(cpu_time, 1);
   }
 
   void render_stack_end() override {
+    ddup_flush_sample();
   }
 
   bool is_valid() override { return true; }
 };
 
+void _stack_sampler_v2() {
+
+  auto last_time = gettime();
+  while (true) {
+      auto now = gettime();
+      auto end_time = now + interval; // TODO interval is set in echion, just take it for now
+      auto wall_time = now - last_time;
+      for_each_interp(
+          [=](PyInterpreterState *interp) -> void {
+              for_each_thread(interp,
+                  [=](PyThreadState *tstate, ThreadInfo &thread) {
+                      thread.sample(interp->id, tstate, wall_time);
+                  });
+          });
+
+      while (now < end_time) {
+          auto sleep_duration = std::chrono::microseconds(end_time - now);
+          std::this_thread::sleep_for(sleep_duration);
+          now = gettime();
+      }
+      last_time = now;
+  }
+}
+
+void stack_sampler_v2() {
+    // TODO lifetime?
+    std::thread(_stack_sampler_v2).detach();
+}
+
 static PyObject *start(PyObject* self, PyObject* args) {
+  // Sets the renderer and then schedules a native thread to run the sampler
   Renderer::get().set_renderer(std::make_shared<StackRenderer>());
-  // Return true
+
+  Py_BEGIN_ALLOW_THREADS;
+  stack_sampler_v2();
+  Py_END_ALLOW_THREADS;
   return PyLong_FromLong(1);
 }
 

@@ -505,7 +505,7 @@ if sys.version_info[:2] >= (3, 4) and not IS_PYSTON:
 
         ext_modules.append(
             CMakeExtension(
-                "ddtrace.profiling.collector._stackv2._stack",
+                "ddtrace.profiling.collector.stack_v2",
                 source_dir=STACK_V2_DIR,
                 permissive_build=CURRENT_OS != "Linux",
                 cmake_args=[

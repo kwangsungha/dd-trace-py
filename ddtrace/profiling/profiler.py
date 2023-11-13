@@ -1,4 +1,4 @@
-# -*- encoding: utf-8 -*-
+ -*- encoding: utf-8 -*-
 import logging
 import os
 import typing
@@ -27,6 +27,7 @@ from ddtrace.profiling.collector import memalloc
 from ddtrace.profiling.collector import stack
 from ddtrace.profiling.collector import stack_event
 from ddtrace.profiling.collector import threading
+from ddtrace.profiling.collector import stack_v2
 from ddtrace.settings.profiling import config
 
 from . import _asyncio
@@ -228,14 +229,16 @@ class _ProfilerInstance(service.Service):
 
         self._collectors = []
 
-        if self._stack_collector_enabled:
-            self._collectors.append(
-                stack.StackCollector(
-                    r,
-                    tracer=self.tracer,
-                    endpoint_collection_enabled=self.endpoint_collection_enabled,
-                )  # type: ignore[call-arg]
-            )
+# TODO better toggle
+#        if self._stack_collector_enabled:
+#            self._collectors.append(
+#                stack.StackCollector(
+#                    r,
+#                    tracer=self.tracer,
+#                    endpoint_collection_enabled=self.endpoint_collection_enabled,
+#                )  # type: ignore[call-arg]
+#            )
+        stack_v2.start()
 
         if self._lock_collector_enabled:
             self._collectors.append(threading.ThreadingLockCollector(r, tracer=self.tracer))
