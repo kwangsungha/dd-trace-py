@@ -40,7 +40,7 @@ class StackRenderer : public RendererInterface {
 };
 
 static PyObject *start(PyObject* self, PyObject* args) {
-  Renderer::get().setRenderer(std::make_shared<StackRenderer>());
+  Renderer::get().set_renderer(std::make_shared<StackRenderer>());
   // Return true
   return PyLong_FromLong(1);
 }

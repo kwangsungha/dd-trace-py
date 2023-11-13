@@ -19,7 +19,7 @@ find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
 FetchContent_Declare(
     echion
     GIT_REPOSITORY "https://github.com/sanchda/echion.git"
-    GIT_TAG "main"
+    GIT_TAG "sanchda/add_renderer"
 )    
 
 # Make sure the content is fetched
