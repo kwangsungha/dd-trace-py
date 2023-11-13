@@ -43,16 +43,15 @@ DEBUG_COMPILE = "DD_COMPILE_DEBUG" in os.environ
 
 IS_PYSTON = hasattr(sys, "pyston_version_info")
 
-LIBDDWAF_DOWNLOAD_DIR = os.path.join(HERE, os.path.join("ddtrace", "appsec", "_ddwaf", "libddwaf"))
-IAST_DIR = os.path.join(HERE, os.path.join("ddtrace", "appsec", "_iast", "_taint_tracking"))
-
+LIBDDWAF_DOWNLOAD_DIR = os.path.join(HERE, "ddtrace", "appsec", "_ddwaf", "libddwaf")
+IAST_DIR = os.path.join(HERE, "ddtrace", "appsec", "_iast", "_taint_tracking")
+STACK_V2_DIR = os.path.join(HERE, "ddtrace", "profiling", "collector", "_stackv2")
+LIBDATADOG_PROF_DOWNLOAD_DIR = os.path.join(HERE, "ddtrace", "internal", "datadog", "profiling", "libdatadog")
+DDUP_DIR = os.path.join(HERE, "ddtrace", "internal", "datadog", "profiling")
 CURRENT_OS = platform.system()
 
 LIBDDWAF_VERSION = "1.15.0"
 
-LIBDATADOG_PROF_DOWNLOAD_DIR = os.path.join(
-    HERE, os.path.join("ddtrace", "internal", "datadog", "profiling", "libdatadog")
-)
 
 LIBDATADOG_PROF_VERSION = "v3.0.0"
 
@@ -333,6 +332,7 @@ class CMakeBuild(build_ext):
         # Define the build and output directories
         output_dir = os.path.abspath(os.path.dirname(self.get_ext_fullpath(ext.name)))
         cmake_build_dir = os.path.abspath(os.path.join("cmake_build", ext.name))
+        extension_basename = os.path.basename(self.get_ext_fullpath(ext.name))
         os.makedirs(cmake_build_dir, exist_ok=True)
 
         # Which commands are passed to _every_ cmake invocation
@@ -340,22 +340,16 @@ class CMakeBuild(build_ext):
         cmake_args += [
             "-S{}".format(ext.source_dir),  # cmake>=3.13
             "-B{}".format(cmake_build_dir),  # cmake>=3.13
+            "-DEXTENSION_NAME={}".format(ext.name),
             "-DPYTHON_EXECUTABLE={}".format(sys.executable),
             "-DCMAKE_BUILD_TYPE={}".format(ext.build_type),
             "-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={}".format(output_dir),
             "-DLIB_INSTALL_DIR={}".format(output_dir),
+            "-DEXTENSION_NAME={}".format(extension_basename),
         ]
 
         # Arguments to the cmake --build command
         build_args = ext.build_args or []
-        build_args += ["--config {}".format(ext.build_type)]
-        if "CMAKE_BUILD_PARALLEL_LEVEL" not in os.environ:
-            # CMAKE_BUILD_PARALLEL_LEVEL works across all generators
-            # self.parallel is a Python 3 only way to set parallel jobs by hand
-            # using -j in the build_ext call, not supported by pip or PyPA-build.
-            # DEV: -j is only supported in CMake 3.12+ only.
-            if hasattr(self, "parallel") and self.parallel:
-                build_args += ["-j{}".format(self.parallel)]
 
         # Arguments to cmake --install command
         install_args = ext.install_args or []
@@ -363,7 +357,9 @@ class CMakeBuild(build_ext):
 
         # platform/version-specific arguments--may go into cmake, build, or install as needed
         if CURRENT_OS == "Windows":
-            cmake_args.extend(["-A", "x64" if platform.architecture()[0] == "64bit" else "Win32"])
+            cmake_args += [
+                "-A{}".format("x64" if platform.architecture()[0] == "64bit" else "Win32"),
+            ]
         if CURRENT_OS == "Darwin" and sys.version_info >= (3, 8, 0):
             # Cross-compile support for macOS - respect ARCHFLAGS if set
             # Darwin Universal2 should bundle both architectures
@@ -506,6 +502,20 @@ if sys.version_info[:2] >= (3, 4) and not IS_PYSTON:
                 permissive_build=True if CURRENT_OS == "Darwin" else False,
             )
         )
+
+        ext_modules.append(
+            CMakeExtension(
+                "ddtrace.profiling.collector._stackv2._stack",
+                source_dir=STACK_V2_DIR,
+                permissive_build=CURRENT_OS != "Linux",
+                cmake_args=[
+                    "-DPLATFORM={}".format(CURRENT_OS),
+                    "-Dddup_SOURCE_DIR={}".format(DDUP_DIR),
+                ],
+
+            )
+        )
+
 else:
     ext_modules = []
 
