@@ -29,7 +29,7 @@ def generate_request_pathway_id(*args, request_path_info=None, current_node_info
         request_path_info = request_path_info or core.get_item("accupath.service.request_path_info") or 0
         current_node_info = current_node_info or core.get_item("accupath.service.current_node_info") or NodeInfo.from_local_env()
 
-        log.debug(f"teague.bick - accupath - generating request pathway id with {request_path_info} and {current_node_info.to_bytes()}")
+        log.debug(f"accupath - generating request pathway id with {request_path_info} and {current_node_info.to_bytes()}")
 
         current_node_bytes = current_node_info.to_bytes()# + request_path_info.to_bytes(8, 'big')
         current_node_hash = fnv1_64(current_node_bytes)

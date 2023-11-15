@@ -52,7 +52,7 @@ class NodeInfo:
     def from_string_dict(cls, string_dict):
         if not isinstance(string_dict, str):
             string_dict = string_dict.to_string_dict()
-        log.debug(f"teague.bick - attempting to load {string_dict}")
+        log.debug(f"accupath - attempting to load {string_dict}")
         info = json.loads(string_dict)
         return cls(info["service"], info["env"], info["hostname"])
 
@@ -72,9 +72,7 @@ class NodeInfo:
         return core.get_item(PARENT_NODE_REQUEST_OUT_TIME)
 
     def to_hash(self, isRoot=False):
-        log.debug("teague.bick - b")
         b = self.to_bytes(isRoot=isRoot)
-        log.debug("teague.bick - c")
         node_hash = fnv1_64(b)
         return node_hash# fnv1_64(struct.pack("<Q", b))
     
