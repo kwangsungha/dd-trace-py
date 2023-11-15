@@ -11,7 +11,7 @@ from ddtrace.internal.accupath.node_info import NodeInfo
 UPSTREAM_PATHWAY_ID = "accupath_upstream_pathway_id"
 
 
-log = get_logger(__name__)
+log = get_logger(f"accupath.{__name__}")
 
 
 def get_bytes(s):

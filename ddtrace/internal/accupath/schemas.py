@@ -9,6 +9,7 @@ from ddtrace.internal.accupath.node_info import NodeInfo
 from ddtrace.internal.accupath.path_info import generate_request_pathway_id, generate_response_pathway_id
 
 
+
 _service_schema = {
     "name": "service",
     "observation_generators": [

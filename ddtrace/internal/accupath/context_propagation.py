@@ -7,7 +7,7 @@ from ddtrace.internal.accupath.node_info import NodeInfo, ROOT_NODE_ID, ROOT_NOD
 from ddtrace.internal.accupath.path_info import PathInfo, UPSTREAM_PATHWAY_ID
 
 
-log = get_logger(__name__)
+log = get_logger(f"accupath.{__name__}")
 
 
 def _generate_header(var_name):

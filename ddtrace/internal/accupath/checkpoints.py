@@ -15,7 +15,7 @@ def _time_checkpoint(checkpoint_record_id, dispatch_id, *args, **kwargs):
 
 def _status_checkpoint(checkpoint_record_id, dispatch_id, *args, **kwargs):
     status_code = args[1]
-    log.debug(f"teague.bick - status code is {status_code}")
+    log.debug(f"accupath - status code is {status_code}")
 
     success =  status_code < 400
     core.set_item(checkpoint_record_id, success)

@@ -13,7 +13,7 @@ PARENT_NODE_ID = "accupath_parent_node_id"
 PARENT_NODE_REQUEST_OUT_TIME = "accupath_parent_node_request_out_time"
 
 
-log = get_logger(__name__)
+log = get_logger(f"accupath.{__name__}")
 
 
 def get_bytes(s):
@@ -50,6 +50,9 @@ class NodeInfo:
     
     @classmethod
     def from_string_dict(cls, string_dict):
+        if not isinstance(string_dict, str):
+            string_dict = string_dict.to_string_dict()
+        log.debug(f"teague.bick - attempting to load {string_dict}")
         info = json.loads(string_dict)
         return cls(info["service"], info["env"], info["hostname"])
 

@@ -8,7 +8,7 @@ from ddtrace.internal.logger import get_logger
 from ddtrace.internal.accupath.schemas import _schemas
 from ddtrace.internal import core
 
-log = get_logger(__name__)
+log = get_logger('accupath')
 
 def _enabled():
     # Can later read from an env var

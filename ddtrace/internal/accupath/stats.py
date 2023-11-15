@@ -11,7 +11,7 @@ from ddtrace.internal.accupath.node_info import NodeInfo
 
 from ddsketch import LogCollapsingLowestDenseDDSketch
 
-log = get_logger(__name__)
+log = get_logger(f"accupath.{__name__}")
 
 
 class PathwayStats:
@@ -66,32 +66,25 @@ def _checkpoint_diff(metric_record_id, observation_coordinates, dispatch_event_i
 def _submit_service_metrics(*args, **kwargs):
     if core.get_item("submitted_metrics"):
         return
-    log.debug("accupath - _submit_service_metrics called a")
     root_request_out_time = core.get_item("accupath.service.root_out") or 0
-    log.debug("accupath - _submit_service_metrics called b")
-
     request_in_time = core.get_item("accupath.service.request_in") or 0
-    log.debug("accupath - _submit_service_metrics called c")
     request_out_time = core.get_item("accupath.service.request_out") or 0
-    log.debug("accupath - _submit_service_metrics called d")
     response_in_time = core.get_item("accupath.service.response_in") or 0
     response_in_status = core.get_item("accupath.service.response_status") or False
-    log.debug("accupath - _submit_service_metrics called e")
     response_out_time = core.get_item("accupath.service.response_out") or 0
     response_out_status = core.get_item("accupath.service.response_out_status") or False
 
     request_pathway_id = core.get_item("accupath.service.request_path_info") or 0
-    log.debug("accupath - _submit_service_metrics called f")
-    response_pathway_id = core.get_item("accupath.service.response_path_info") or 0
-    log.debug("accupath - _submit_service_metrics called g")
+    # take the request pathway id because we assume, for now, that we're the last in the chain
+    response_pathway_id = core.get_item("accupath.service.response_path_info") or request_pathway_id
 
     try:
         root_node_info = NodeInfo.from_string_dict(NodeInfo.get_root_node_info())
 
+        log.debug(f"teague.bick - got response path info of {response_pathway_id}")
         path_key = PathKey(request_pathway_id=request_pathway_id, response_pathway_id=response_pathway_id, root_node_info=root_node_info)
     except Exception:
         log.debug("error", exc_info=True)
-    log.debug("accupath - _submit_service_metrics called h")
     to_submit = [
         (request_in_time, path_key, "request_latency", max(0, (request_in_time - root_request_out_time))),
         (response_in_time, path_key, "response_latency", max(0, (response_in_time - request_out_time))),
@@ -102,21 +95,18 @@ def _submit_service_metrics(*args, **kwargs):
     ]
 
     if response_in_status:
-        log.debug("accupath - _submit_service_metrics called h - a")
         to_submit.extend([
             (response_in_time, path_key, "root_to_response_in_latency", max(0, (response_in_time - root_request_out_time))),
             (response_in_time, path_key, "root_to_response_out_latency", max(0, (response_in_time - root_request_out_time))),
         ])
     else:
-        log.debug("accupath - _submit_service_metrics called h - b")
         to_submit.extend([
             (response_in_time, path_key, "root_to_response_in_latency_errors", max(0, (response_in_time - root_request_out_time))),
             (response_in_time, path_key, "root_to_response_out_latency_errors", max(0, (response_in_time - root_request_out_time))),
         ])
 
-    log.debug("accupath - _submit_service_metrics called i")
     _accupath_processor.add_bucket_data(to_submit)
-    log.debug("accupath - _submit_service_metrics called j")
+    log.debug("accupath - _submit_service_metrics finished")
     core.set_item("submitted_metrics", True)
 
 _buckets = defaultdict(

@@ -28,7 +28,7 @@ from ddtrace.internal.accupath.payload_pb2 import PathDirection
 
 from ddtrace.internal.accupath.path_info import generate_request_pathway_id
 
-log = get_logger(__name__)
+log = get_logger(f"accupath.{__name__}")
 
 
 # Quick Fix Constants
@@ -57,32 +57,27 @@ class _AccuPathProcessor(PeriodicService):
         Add the data into buckets
         """
         try:
-            log.debug("teague.bick - calling add_bucket")
             with self._lock:
                 for time_index, path_key, metric_name, metric_value in items:
-                    log.debug("teague.bick - adding a bucket")
                     bucket_time_ns = time_index - (time_index % self._bucket_size_ns)
                     stats = self._buckets[bucket_time_ns].pathway_stats[path_key]
                     if hasattr(stats, metric_name):
                         getattr(stats, metric_name).add(metric_value)
         except Exception as e:
-            log.debug("teague.bick - error", exc_info=True)
+            log.debug("accupath - error", exc_info=True)
 
     def periodic(self):
         try:
             self._flush_stats()
         except Exception as e:
-            log.debug("teague.bick - error _flush_stats", exc_info=True)
+            log.debug("accupath - error _flush_stats", exc_info=True)
 
     def _flush_stats(self):
-        log.debug("teague.bick - calling _flush_stats a")
         headers = {"DD-API-KEY": os.environ.get("DD_API_KEY")}
-        log.debug("teague.bick - calling _flush_stats b")
         to_del = set()
         with self._lock:
             for bucket_time, bucket in self._buckets.items():
                 for path_info_key, actual_bucket in bucket.pathway_stats.items():
-                    log.debug("teague.bick - calling _flush_stats c")
                     payload=None
                     try:
                         payload = generate_payload_v0(
@@ -96,7 +91,6 @@ class _AccuPathProcessor(PeriodicService):
                     except Exception as e:
                         log.debug("Ran into an issue creating payloads", exc_info=True)
                         return 
-                    log.debug("teague.bick - calling _flush_stats d")
                     try:
                         conn = self._conn()
                         conn.request("POST", ACCUPATH_ENDPOINT, payload, headers)
@@ -119,9 +113,6 @@ class _AccuPathProcessor(PeriodicService):
                             log.debug("accupath sent %s to %s", _human_size(len(payload)), ACCUPATH_BASE_URL)
                             to_del.add(bucket_time)
             for b_t in to_del:
-                log.debug("teague.bick - bucket deletion")
-                log.debug(f"teague.bick - {self._buckets.keys()}")
-                log.debug(f"teague.bick - {b_t}")
                 if b_t in self._buckets:
                     del self._buckets[b_t]
 
@@ -151,12 +142,10 @@ def generate_payload_v0(
         --pyi_out=/Users/accupath/Workspace/experimental/users/ani.saraf/accupath/architectures/services/dd-trace-py/ddtrace/internal/accupath/ \
         /Users/accupath/Workspace/experimental/users/ani.saraf/accupath/architectures/services/dd-go/pb/proto/trace/datapaths/payload.proto
     """
-    log.debug("Teague.bick - A")
-    log.debug(f"teague.bick - payload {root_node_info.__dict__}")
     root_node_hash = root_node_info.to_hash(isRoot=True)
     current_node_hash = current_node_info.to_hash()
 
-    log.info("teague.bick - generating info")
+    log.info("accupath - generating payload")
 
     # ADD THIS NODE TO THE PAYLOAD
     node = NodeID()

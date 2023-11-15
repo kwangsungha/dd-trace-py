@@ -14,7 +14,7 @@ from ddtrace.internal.accupath.payload_pb2 import Paths
 from ..logger import get_logger
 
 
-log = get_logger(__name__)
+log = get_logger(f"accupath.{__name__}")
 
 """
 to regenerate the proto:
