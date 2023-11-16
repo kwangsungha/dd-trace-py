@@ -1,4 +1,3 @@
- -*- encoding: utf-8 -*-
 import logging
 import os
 import typing
@@ -27,7 +26,6 @@ from ddtrace.profiling.collector import memalloc
 from ddtrace.profiling.collector import stack
 from ddtrace.profiling.collector import stack_event
 from ddtrace.profiling.collector import threading
-from ddtrace.profiling.collector import stack_v2
 from ddtrace.settings.profiling import config
 
 from . import _asyncio
@@ -118,6 +116,7 @@ class _ProfilerInstance(service.Service):
     agentless = attr.ib(type=bool, default=config.agentless)
     _memory_collector_enabled = attr.ib(type=bool, default=config.memory.enabled)
     _stack_collector_enabled = attr.ib(type=bool, default=config.stack.enabled)
+    _stack_collector_v2_enabled = attr.ib(type=bool, default=config.stack_v2.enabled)
     _lock_collector_enabled = attr.ib(type=bool, default=config.lock.enabled)
     enable_code_provenance = attr.ib(type=bool, default=config.code_provenance)
     endpoint_collection_enabled = attr.ib(type=bool, default=config.endpoint_collection)
@@ -174,7 +173,7 @@ class _ProfilerInstance(service.Service):
         if self.endpoint_collection_enabled:
             endpoint_call_counter_span_processor.enable()
 
-        if self._export_libdd_enabled:
+        if self._export_libdd_enabled or self._stack_collector_v2_enabled:
             versionname = (
                 "{}.libdd".format(self.version)
                 if self._export_py_enabled and self.version is not None
@@ -229,16 +228,13 @@ class _ProfilerInstance(service.Service):
 
         self._collectors = []
 
-# TODO better toggle
-#        if self._stack_collector_enabled:
-#            self._collectors.append(
-#                stack.StackCollector(
-#                    r,
-#                    tracer=self.tracer,
-#                    endpoint_collection_enabled=self.endpoint_collection_enabled,
-#                )  # type: ignore[call-arg]
-#            )
-        stack_v2.start()
+        self._collectors.append(
+            stack.StackCollector(
+                r,
+                tracer=self.tracer,
+                endpoint_collection_enabled=self.endpoint_collection_enabled,
+            )  # type: ignore[call-arg]
+        )
 
         if self._lock_collector_enabled:
             self._collectors.append(threading.ThreadingLockCollector(r, tracer=self.tracer))

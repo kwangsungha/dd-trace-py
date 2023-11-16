@@ -335,7 +335,7 @@ class CMakeBuild(build_ext):
 
         # We derive the cmake build directory from the output directory, but put it in
         # a sibling directory to avoid polluting the final package
-        cmake_build_dir = os.path.abspath(self.build_lib.replace("lib.", "cmake."))
+        cmake_build_dir = os.path.abspath(os.path.join(self.build_lib.replace("lib.", "cmake."), ext.name))
         os.makedirs(cmake_build_dir, exist_ok=True)
 
         # Which commands are passed to _every_ cmake invocation

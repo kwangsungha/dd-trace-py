@@ -19,6 +19,7 @@ from ddtrace.profiling import collector
 from ddtrace.profiling.collector import _task
 from ddtrace.profiling.collector import _traceback
 from ddtrace.profiling.collector import stack_event
+from ddtrace.profiling.collector import stack_v2
 from ddtrace.settings.profiling import config
 
 
@@ -490,6 +491,7 @@ class StackCollector(collector.PeriodicCollector):
     _thread_time = attr.ib(init=False, repr=False, eq=False)
     _last_wall_time = attr.ib(init=False, repr=False, eq=False, type=int)
     _thread_span_links = attr.ib(default=None, init=False, repr=False, eq=False)
+    _stack_collector_v2_enabled = attr.ib(type=bool, default=config.stack_v2.enabled)
 
     @max_time_usage_pct.validator
     def _check_max_time_usage(self, attribute, value):
@@ -528,15 +530,18 @@ class StackCollector(collector.PeriodicCollector):
         wall_time = now - self._last_wall_time
         self._last_wall_time = now
 
-        all_events = stack_collect(
-            self.ignore_profiler,
-            self._thread_time,
-            self.nframes,
-            self.interval,
-            wall_time,
-            self._thread_span_links,
-            self.endpoint_collection_enabled,
-        )
+        if self._stack_collector_v2_enabled:
+            all_events = stack_v2.collect()
+        else:
+            all_events = stack_collect(
+                self.ignore_profiler,
+                self._thread_time,
+                self.nframes,
+                self.interval,
+                wall_time,
+                self._thread_span_links,
+                self.endpoint_collection_enabled,
+            )
 
         used_wall_time_ns = compat.monotonic_ns() - now
         self.interval = self._compute_new_interval(used_wall_time_ns)
