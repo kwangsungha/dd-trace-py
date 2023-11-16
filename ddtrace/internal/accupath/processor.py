@@ -164,6 +164,13 @@ def generate_payload_v0(
     pathway.node_hash = generate_request_pathway_id(current_node_info=current_node_info, request_path_info=path_key_info.request_pathway_id)
     pathway.upstream_pathway_hash = path_key_info.request_pathway_id
     pathway.downstream_pathway_hash = path_key_info.response_pathway_id
+    pathway_string = " -> ".join([
+        f"({root_node_info.service}, {root_node_info.env})",
+        f"{path_key_info.request_pathway_id}",
+        f"({current_node_info.service}, {current_node_info.env}",
+        f"{path_key_info.response_pathway_id}"
+    ])
+    log.debug(f"accupath -  {pathway_string}")
 
     #  LATENCIES
     response_latencies = Latencies()

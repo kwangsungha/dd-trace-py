@@ -6,12 +6,16 @@ from ddtrace.internal.logger import get_logger
 from ddtrace.internal.utils.fnv import fnv1_64
 
 from ddtrace.internal.accupath.node_info import NodeInfo
+import logging
+import uuid
+import uuid
 
 
 UPSTREAM_PATHWAY_ID = "accupath_upstream_pathway_id"
 
 
 log = get_logger(f"accupath.{__name__}")
+log.setLevel(logging.ERROR)
 
 
 def get_bytes(s):
@@ -42,8 +46,14 @@ def generate_request_pathway_id(*args, request_path_info=None, current_node_info
         log.debug("failed to generate request pathway id", exc_info=True)
 
 
+def generate_pathway_uid():
+    uid = str(uuid.uuid4())
+    return uid
+
+uid = str(uuid.uuid4())
+print(uid)
 def generate_response_pathway_id(*args, **kwargs):
-    response_path_info = core.get_item("accupath.service.response_path_info") or 0
+    response_path_info = core.get_item("accupath.service.response_path_info") or core.get_item("accupath.service.request_path_info")
     current_node_info = core.get_item("accupath.service.current_node_info") or NodeInfo.from_local_env()
 
     current_node_bytes = current_node_info.to_bytes()
@@ -55,10 +65,11 @@ def generate_response_pathway_id(*args, **kwargs):
 
 
 class PathKey:
-    def __init__(self, request_pathway_id, response_pathway_id, root_node_info):
+    def __init__(self, request_pathway_id, response_pathway_id, root_node_info, request_id):
         self.request_pathway_id = request_pathway_id
         self.response_pathway_id = response_pathway_id
         self.root_node_info = root_node_info
+        self.request_id = request_id
 
     def __eq__(self, __value: object) -> bool:
         if not isinstance(__value, PathKey):
@@ -101,7 +112,7 @@ class PathInfo:
     def to_hash(self):
         b = self.to_bytes()
         node_hash = fnv1_64(b)
-        result = fnv1_64(struct.pack("<Q", node_hash) + struct.pack("<Q", self.upstream_pathway_id))
+        result = fnv1_64(struct.pack("<Q", node_hash) + struct.pack("<Q", self.request_pathway_hash))
 
         return result
 

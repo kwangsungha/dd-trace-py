@@ -10,8 +10,10 @@ from ddtrace.internal.accupath.processor import _processor_singleton as _accupat
 from ddtrace.internal.accupath.node_info import NodeInfo
 
 from ddsketch import LogCollapsingLowestDenseDDSketch
+import logging
 
 log = get_logger(f"accupath.{__name__}")
+log.setLevel(logging.DEBUG)
 
 
 class PathwayStats:
@@ -64,8 +66,9 @@ def _checkpoint_diff(metric_record_id, observation_coordinates, dispatch_event_i
 
 
 def _submit_service_metrics(*args, **kwargs):
-    if core.get_item("submitted_metrics"):
+    if core.get_item("submitted_metrics") and core.get_item("accupath.service.uid"):
         return
+    log.debug
     root_request_out_time = core.get_item("accupath.service.root_out") or 0
     request_in_time = core.get_item("accupath.service.request_in") or 0
     request_out_time = core.get_item("accupath.service.request_out") or 0
@@ -76,15 +79,22 @@ def _submit_service_metrics(*args, **kwargs):
 
     request_pathway_id = core.get_item("accupath.service.request_path_info") or 0
     # take the request pathway id because we assume, for now, that we're the last in the chain
-    response_pathway_id = core.get_item("accupath.service.response_path_info") or request_pathway_id
+    response_pathway_id = core.get_item("accupath.service.response_path_info") or 0
+    request_id = core.get_item("accupath.service.uid") or -1
+    path_key = None
 
     try:
         root_node_info = NodeInfo.from_string_dict(NodeInfo.get_root_node_info())
 
-        log.debug(f"teague.bick - got response path info of {response_pathway_id}")
-        path_key = PathKey(request_pathway_id=request_pathway_id, response_pathway_id=response_pathway_id, root_node_info=root_node_info)
+        path_key = PathKey(
+            request_pathway_id=request_pathway_id,
+            response_pathway_id=response_pathway_id,
+            root_node_info=root_node_info,
+            request_id=request_id
+        )
     except Exception:
         log.debug("error", exc_info=True)
+        raise
     to_submit = [
         (request_in_time, path_key, "request_latency", max(0, (request_in_time - root_request_out_time))),
         (response_in_time, path_key, "response_latency", max(0, (response_in_time - request_out_time))),
@@ -105,8 +115,11 @@ def _submit_service_metrics(*args, **kwargs):
             (response_in_time, path_key, "root_to_response_out_latency_errors", max(0, (response_in_time - root_request_out_time))),
         ])
 
+    next_hop = generate_request_pathway_id(current_node_info=NodeInfo.from_local_env(), request_path_info=path_key.request_pathway_id)
+    msg = f"accupath - path - ({path_key.request_id} - {path_key.root_node_info.service}): {path_key.request_pathway_id} -> {next_hop}"
+    log.debug(msg)
     _accupath_processor.add_bucket_data(to_submit)
-    log.debug("accupath - _submit_service_metrics finished")
+    log.debug(f"accupath - _submit_service_metrics finished in context: {core._CURRENT_CONTEXT.get().identifier}")
     core.set_item("submitted_metrics", True)
 
 _buckets = defaultdict(

@@ -6,7 +6,7 @@ from ddtrace.internal.accupath.checkpoints import _status_checkpoint
 from ddtrace.internal.accupath.context_propagation import inject_context, extract_context
 from ddtrace.internal.accupath.generators import generate_time
 from ddtrace.internal.accupath.node_info import NodeInfo
-from ddtrace.internal.accupath.path_info import generate_request_pathway_id, generate_response_pathway_id
+from ddtrace.internal.accupath.path_info import generate_request_pathway_id, generate_response_pathway_id, generate_pathway_uid
 
 
 
@@ -34,6 +34,7 @@ _service_schema = {
                 "extract_context",
                 generate_time,  # Default value to set to on extraction, if the value isn't present
                 int, # Casting function on extraction
+                None, # Copy extracted values to this var
                 "root_out",  # Name of the observation in the core context (for both src and dst)
             ),  
             (
@@ -45,6 +46,7 @@ _service_schema = {
                 "extract_context",  # Function to call
                 generate_time,  # Default value to set to on extraction, if the value isn't present
                 int, # Casting function on extraction
+                None, # Copy extracted values to this var
                 "upstream_out",  # Name of the observation in the core context (for both src and dst)
             ),  
             (
@@ -56,6 +58,7 @@ _service_schema = {
                 "extract_context",  # Function to call
                 lambda: None,  # Default value to set to on extraction, if the value isn't present
                 str,  # Casting function on extraction
+                None, # Copy extracted values to this var
                 "root_node_info",  # Name of the observation in the core context (for both src and dst)
             ),  
             (
@@ -67,6 +70,7 @@ _service_schema = {
                 "extract_context",  # Function to call
                 lambda: None,  # Default value to set to on extraction, if the value isn't present
                 str,  # Casting function on extraction
+                None, # Copy extracted values to this var
                 "request_parent_node_info",  # Name of the observation in the core context (for both src and dst)
             ),  
             (
@@ -78,6 +82,7 @@ _service_schema = {
                 "extract_context",  # Function to call
                 lambda: None,  # Default value to set to on extraction, if the value isn't present
                 int,  # Casting function on extraction
+                "response_path_info", # Copy extracted values to this var
                 "request_path_info",  # Name of the observation in the core context (for both src and dst)
             ),  
             (
@@ -89,6 +94,7 @@ _service_schema = {
                 "extract_context",  # Function to call
                 lambda: None,  # Default value to set to on extraction, if the value isn't present
                 str,  # Casting function on extraction
+                None, # Copy extracted values to this var
                 "root_node_info",  # Name of the observation in the core context (for both src and dst)
             ),  
             (
@@ -100,6 +106,7 @@ _service_schema = {
                 "extract_context",  # Function to call
                 lambda: None,  # Default value to set to on extraction, if the value isn't present
                 str,  # Casting function on extraction
+                None, # Copy extracted values to this var
                 "parent_node_info",  # Name of the observation in the core context (for both src and dst)
             ),  
             (
@@ -111,8 +118,21 @@ _service_schema = {
                 "extract_context",  # Function to call
                 lambda: None,  # Default value to set to on extraction, if the value isn't present
                 int,  # Casting function on extraction
+                None, # Copy extracted values to this var
                 "response_path_info",  # Name of the observation in the core context (for both src and dst)
-            ),  
+            ),
+            (
+                "http.request.header.injection",  # Triggering event (inject)
+                "inject_context",  # Function to call
+                generate_pathway_uid,  # Default value to inject (None - do not inject if value does not exist)
+                True, # Whether to use the existing value if it exists
+                "http.request.header.extraction",  # Triggering event (extract)
+                "extract_context",  # Function to call
+                lambda: None,  # Default value to set to on extraction, if the value isn't present
+                str,  # Casting function on extraction
+                None, # Copy extracted values to this var
+                "uid",  # Name of the observation in the core context (for both src and dst)
+            ),
         ]
     },
     "observations": [

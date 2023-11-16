@@ -99,7 +99,7 @@ def _wrap_send(func, instance, args, kwargs):
         service = trace_utils.ext_service(None, config.requests)
 
     operation_name = schematize_url_operation("requests.request", protocol="http", direction=SpanDirection.OUTBOUND)
-    with tracer.trace(operation_name, service=service, resource=f"{method} {path}", span_type=SpanTypes.HTTP) as span:
+    with tracer.trace(operation_name, service=service, resource=f"{method} {path}", span_type=SpanTypes.HTTP) as span, core.context_with_data('requests'):
         span.set_tag_str(COMPONENT, config.requests.integration_name)
 
         # set span.kind to the type of operation being performed

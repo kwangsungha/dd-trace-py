@@ -43,10 +43,17 @@ if _enabled():
             extraction_method_name,
             default_extraction_value,
             extraction_cast_func,
+            copy_on_extract_var,
             value_variable
         ) in schema["context_propagation"]["request"]:
             partial_injection_func = partial(function_map[injection_method_name], f"accupath.service.{value_variable}", default_injection_value, use_existing)
-            partial_extract_func = partial(function_map[extraction_method_name], f"accupath.service.{value_variable}", default_extraction_value, extraction_cast_func)
+            partial_extract_func = partial(
+                function_map[extraction_method_name],
+                f"accupath.service.{value_variable}",
+                default_extraction_value,
+                extraction_cast_func,
+                f"accupath.service.{copy_on_extract_var}"
+            )
             core.on(injection_trigger_event, partial_injection_func)  # Register the injection method
             core.on(extraction_trigger_event, partial_extract_func)  # Register the extraction method
 
