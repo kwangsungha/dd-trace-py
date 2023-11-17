@@ -1,3 +1,8 @@
+1. Starting a pathway - create pathway with ro
+
+
+
+
 # How this works
 * A path consists of a root node, a set of "upstream" nodes a request follows, 
 * A path coordinate is (root node id, upstream path id, current node id) 

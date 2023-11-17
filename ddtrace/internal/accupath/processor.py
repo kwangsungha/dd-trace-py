@@ -1,5 +1,6 @@
 # coding: utf-8
 import os
+import logging
 from ddtrace.internal.accupath.node_info import NodeInfo, ROOT_NODE_ID, ROOT_NODE_REQUEST_OUT_TIME, PARENT_NODE_ID, PARENT_NODE_REQUEST_OUT_TIME
 from ddtrace.internal.accupath.path_info import EdgeInfo, PathInfo
 
@@ -13,7 +14,6 @@ from ..agent import get_connection
 from ..compat import get_connection_response
 from ..logger import get_logger
 from ..writer import _human_size
-from ddtrace.internal.utils.fnv import fnv1_64
 
 # Protobuff
 from ddtrace.internal.accupath.payload_pb2 import DataPathAPIPayload
@@ -29,6 +29,7 @@ from ddtrace.internal.accupath.payload_pb2 import PathDirection
 from ddtrace.internal.accupath.path_info import generate_request_pathway_id
 
 log = get_logger(f"accupath.{__name__}")
+log.setLevel(logging.DEBUG)
 
 
 # Quick Fix Constants
@@ -63,12 +64,16 @@ class _AccuPathProcessor(PeriodicService):
                     stats = self._buckets[bucket_time_ns].pathway_stats[path_key]
                     if hasattr(stats, metric_name):
                         getattr(stats, metric_name).add(metric_value)
+                    log.debug("Added bucket entry")
         except Exception as e:
             log.debug("accupath - error", exc_info=True)
+        log.debug("Added bucket data")
 
     def periodic(self):
         try:
+            log.debug("flushing stats")
             self._flush_stats()
+            log.debug("flushed stats")
         except Exception as e:
             log.debug("accupath - error _flush_stats", exc_info=True)
 
@@ -142,7 +147,7 @@ def generate_payload_v0(
         --pyi_out=/Users/accupath/Workspace/experimental/users/ani.saraf/accupath/architectures/services/dd-trace-py/ddtrace/internal/accupath/ \
         /Users/accupath/Workspace/experimental/users/ani.saraf/accupath/architectures/services/dd-go/pb/proto/trace/datapaths/payload.proto
     """
-    root_node_hash = root_node_info.to_hash(isRoot=True)
+    root_node_hash = root_node_info.to_hash()
     current_node_hash = current_node_info.to_hash()
 
     log.info("accupath - generating payload")
@@ -161,16 +166,16 @@ def generate_payload_v0(
     # REPRESENT PATHWAY
     pathway = PathwayInfo()
     pathway.root_service_hash = root_node_hash
-    pathway.node_hash = generate_request_pathway_id(current_node_info=current_node_info, request_path_info=path_key_info.request_pathway_id)
+    pathway.node_hash = path_key_info.node_hash#generate_request_pathway_id(current_node_info=current_node_info, request_path_info=path_key_info.request_pathway_id)
     pathway.upstream_pathway_hash = path_key_info.request_pathway_id
     pathway.downstream_pathway_hash = path_key_info.response_pathway_id
     pathway_string = " -> ".join([
         f"({root_node_info.service}, {root_node_info.env})",
-        f"{path_key_info.request_pathway_id}",
-        f"({current_node_info.service}, {current_node_info.env}",
-        f"{path_key_info.response_pathway_id}"
+        f"upstream: {path_key_info.request_pathway_id}",
+        f"current: {path_key_info.node_hash} - {current_node_info.service}, {current_node_info.env}",
+        f"downstream: {path_key_info.response_pathway_id}"
     ])
-    log.debug(f"accupath -  {pathway_string}")
+    log.debug(f"accupath payload -  {pathway_string}")
 
     #  LATENCIES
     response_latencies = Latencies()
