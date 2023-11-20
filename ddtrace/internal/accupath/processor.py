@@ -171,6 +171,7 @@ def generate_payload_v0(
     pathway.downstream_pathway_hash = path_key_info.response_pathway_id
     pathway_string = " -> ".join([
         f"({root_node_info.service}, {root_node_info.env})",
+        f"Time Bucket: {bucket_start_time}",
         f"upstream: {path_key_info.request_pathway_id}",
         f"current: {path_key_info.node_hash} - {current_node_info.service}, {current_node_info.env}",
         f"downstream: {path_key_info.response_pathway_id}"

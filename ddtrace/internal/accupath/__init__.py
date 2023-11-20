@@ -350,22 +350,24 @@ def submit_metrics():
         response_in_status = bool(current_context.checkpoints[-2].checkpoint_success)
 
         to_submit = [
-            (request_in_time, path_key, "request_latency", max(0, (request_in_time - root_request_out_time))),
-            (response_in_time, path_key, "response_latency", max(0, (response_in_time - request_out_time))),
-            (request_in_time, path_key, "root_to_request_in_latency", max(0, (request_in_time - root_request_out_time))),
+            #(request_in_time, path_key, "request_latency", max(0, (request_in_time - root_request_out_time))),
+            #(response_in_time, path_key, "response_latency", max(0, (response_in_time - request_out_time))),
+            #(request_in_time, path_key, "root_to_request_in_latency", max(0, (request_in_time - root_request_out_time))),
             #(request_in_time, path_key, "root_to_request_in_latency_errors", (request_in_time - root_request_out_time)),
-            (request_in_time, path_key, "root_to_request_out_latency", max(0, (request_out_time - root_request_out_time))),
+            #(request_in_time, path_key, "root_to_request_out_latency", max(0, (request_out_time - root_request_out_time))),
             #(request_in_time, path_key, "root_to_request_out_latency_errors", (request_out_time - root_request_out_time)),
         ]
         if response_in_status:
             to_submit.extend([
-                (response_in_time, path_key, "root_to_response_in_latency", max(0, (response_in_time - root_request_out_time))),
-                (response_in_time, path_key, "root_to_response_out_latency", max(0, (response_in_time - root_request_out_time))),
+                #(response_in_time, path_key, "root_to_response_in_latency", max(0, (response_in_time - root_request_out_time))),
+                #(response_in_time, path_key, "root_to_response_out_latency", max(0, (response_in_time - root_request_out_time))),
+                (request_out_time, path_key, "root_to_request_out_latency", max(0, (request_out_time - root_request_out_time))),
             ])
         else:
             to_submit.extend([
-                (response_in_time, path_key, "root_to_response_in_latency_errors", max(0, (response_in_time - root_request_out_time))),
-                (response_in_time, path_key, "root_to_response_out_latency_errors", max(0, (response_in_time - root_request_out_time))),
+                #(response_in_time, path_key, "root_to_response_in_latency_errors", max(0, (response_in_time - root_request_out_time))),
+                #(response_in_time, path_key, "root_to_response_out_latency_errors", max(0, (response_in_time - root_request_out_time))),
+                (request_out_time, path_key, "root_to_request_out_latency_errors", max(0, (request_out_time - root_request_out_time))),
             ])
         _accupath_processor.add_bucket_data(to_submit)
     except:
