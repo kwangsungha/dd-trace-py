@@ -33,7 +33,7 @@ ExternalProject_Add(
     PREFIX libunwind
     GIT_REPOSITORY https://github.com/libunwind/libunwind.git
     GIT_TAG "v1.7.2"
-    CONFIGURE_COMMAND autoreconf -i && ./configure --disable-shared --enable-static CFLAGS=-fPIC
+    CONFIGURE_COMMAND autoreconf -i && ./configure --disable-minidebuginfo --enable-fast-unwind --disable-shared --enable-static CFLAGS=-fPIC
     BUILD_COMMAND make
     INSTALL_COMMAND ""
     BUILD_IN_SOURCE TRUE

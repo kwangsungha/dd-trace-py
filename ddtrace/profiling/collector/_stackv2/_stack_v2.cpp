@@ -253,8 +253,6 @@ start(PyObject* self, PyObject* args)
 static PyObject*
 collect(PyObject* self, PyObject* args)
 {
-    if (!PyArg_ParseTuple(args, ""))
-        return NULL;
     return renderer->pop();
 }
 
@@ -263,7 +261,7 @@ static PyMethodDef _stack_v2_methods[] = { { "start", (PyCFunction)start, METH_V
                                            { NULL, NULL, 0, NULL } };
 
 PyMODINIT_FUNC
-PyInit__stack_v2(void)
+PyInit_stack_v2(void)
 {
     PyObject* m;
     static struct PyModuleDef moduledef = {

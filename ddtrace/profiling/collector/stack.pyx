@@ -532,6 +532,8 @@ class StackCollector(collector.PeriodicCollector):
 
         if self._stack_collector_v2_enabled:
             all_events = stack_v2.collect()
+            if not all_events:
+                all_events = []
         else:
             all_events = stack_collect(
                 self.ignore_profiler,
