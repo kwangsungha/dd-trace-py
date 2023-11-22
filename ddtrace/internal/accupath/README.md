@@ -1,119 +1,137 @@
-1. Starting a pathway - create pathway with ro
+### 10,000 Foot View
+At a high-level, AccuPath generates aggregate metrics for requests which follow a specific graph traversal.
+
+Imagine a distributed trace which represents the entry and exit points (server/client calls) for a series of synchronous requests between HTTP servers.
+AccuPath takes this distributed trace, gives the pathway of services within the trace a unique ID, and then generates metrics for all traces which follow
+that same pathway.
+
+### Glossary
+
+* **path** - A traversal through a set of nodes along a set of edges
+* **partial path** - A set of synchronous calls which hasn't yet "ended" (i.e. turned into a response)
+* **complete path** - A set of synchronous calls which has "ended" (turned into a response path)
+* **upstream pathway hash/id** - Partial request pathway ID including nodes from root to the last node (excludes current node)
+* **current pathway hash/id** - Partial request pathway ID including nodes from root to the current node (includes current node)
+* **downstream pathway hash/id** - The downstream pathway hash is the child's request pathway hash ID.  Alias: response path whash
+
+### Helpful? image
+![AccuPath](AccuPath.png)
 
 
+### On outbound request (HTTP client)
+- If there is no upstream pathway header information:
+    - `upstream_pathway_hash = 0  # This is specifically for the root of a pathway and is needed to identify a pathway`
+    - `current_pathway_id = hash(current_node_info) # Generate and store a new pathway ID`
+    - `pathway_instance_id = uuid() # Generate and store a unique instance ID`
+    - `root_node_info = current_node_info # Generate and store the current node ID information`
+    - `root_node_out_time = current_nanosecond_epoch_timestamp() # Generate and store the current node out time`
+    - `current_node_out_time = root_node_out_time  # Used for bucketing metrics and latencies`
+- Else:
+    - `last_node_pathway_id = extract_from_headers('last_node_pathway_id')`
+    - `current_pathway_id = hash(current_node_info, last_node_pathway_id) # Combine the current node info and the pathway id from the last node into the current pathway ID`
+    - `pathway_instance_id = extract_from_headers('pathway_instance_id')`
+    - `root_node_info = extract_from_headers('root_node_info')`
+    - `root_node_out_time = extract_from_headers('root_node_out_time)`
+    - `current_node_out_time = current_nanosecond_epoch_timestamp()  # Used for bucketing metrics, not propagated`
+
+Context Injection and Propagation (inject these):
+- `x-datadog-accupath-pathway-last-node-hash = current_pathway_id #this node's hash becomes our child's "last" hash`
+- `x-datadog-accupath-pathway-uid = pathway_instance_uid`
+- `x-datadog-accupath-pathway-root-node-info = root_node_info`
+- `x-datadog-accupath-pathway-root-checkpoint-time = root_node_out_time`
+
+Notes:
+* Store these values for later, we'll need them to generate sketches and the payload once a response comes back
+* names, functions, etc are pseudo-code, use your own judgement
+* HTTP server extraction data is combined with HTTP client response data, so we need both to be accessible (i.e. 'B' is both a client and a server in A -> B -> C)
+
+### On inbound request (HTTP server)
+- Store and extract header information as necessary, per language rules and with the need to access them later
+
+### On outbound response (HTTP server)
+- If there is no downstream response header information:
+    - `downstream_response_hash = 0  # This is unique for the last node in a request chain and is needed to identify a pathway`
+- Else:
+    - `root_node_info = extract_from_headers('root_node_info')`
+    - `root_node_out_time = extract_from_headers('root_node_out_time')`
+    - `current_pathway_id = we_sent_this_in_the_request_output()`
+    - `pathway_uid = extract_from_headers('pathway_uid') # same as request_out`
+    - `downstream_response_hash = extract_from_headers('last_node_hash')  # the last response's hash id is now our "last node hash"`
+
+Context Injection and Propagation (inject these):
+- `x-datadog-accupath-pathway-uid = pathway_instance_uid # duplicates request header`
+- `x-datadog-accupath-pathway-root-node-info = root_node_info # duplicates request header`
+- `x-datadog-accupath-pathway-root-checkpoint-time = root_checkpoint_time # duplicates request header`
+- `x-datadog-accupath-pathway-last-node-hash = current_node_hash # this is the same information we sent out as part of the request injection`
+
+### On inbound response (HTTP Client)
+- Store and extract header information as necessary, per language rules and with the need to access them later
+
+## Telemetry Generation
+We generate telemetry when we have the full pathway id `(upstream_hash, downstream_hash, current_node)`, so we have to wait for downstream to reply.
+
+The datapoint tuple (generate per request/response pair) we need to store:
+* Time bucket: nanosecond epoch of the time we send out a request
+* pathway_id: (upstream_hash, downstream_hash, current_pathway_hash)
+* 2xSketches:
+    - Hits: ddsketch with seconds from root_node (as passed by headers) (if response was NOT an error)
+    - Errors: ddsketch with seconds from root_node (as passed by headers) (if reseponse was an error)
+
+## Telemetry submission
+* Every <x> seconds (python uses 10) send all data aggregated in the local sketches and send it to datadog
+* Requires an API key
 
 
-# How this works
-* A path consists of a root node, a set of "upstream" nodes a request follows, 
-* A path coordinate is (root node id, upstream path id, current node id) 
-    * We break this down further in order to get stats to questions we want to answer
-* A checkpoint we 
+## Other implementation details
+* The hashing algorithm used is fnv_1
+* The parameters which constitute node ID for pathway id generation is currently limited to "service"
+* The node id parameters for all other use-cases (protobuf) are (service, env, hostname)
 
-# Assumptions we need to fix/validate eventually
-* We should be able to acquire the datastreams info here too, but the backend info might look different
-* rewrite the "how this works"
-* We can make "pathway classes" for future iterations or customization by customers
-* use an environment variable to enable/disable
-* Every tracer supports these headers (especially upstream)
-* Efficiency of data transmitted (hashing/unhashing)
-* Context propagation only woks through the 'datadog' propagator (others not supported -_-)
-* core is implemented and will always find the right items
-* How is information back-propagated?
-* Make the metrics a periodic service (instead of synchronous)
-* Actually aggregate metrics
-* Add testing
+### On 
 
-# Notes
-* With span links we may have multiple paths act as one graph (fan-in)
-* What do we do if there's an error downstream as far as the downstream stats?
-* We're grouping by time, so we're going to end up with not reporting the "from upstream" stats for a bit
-    * Does the time bucket matter?
-* I am sending partial path information at a time, so a single path may be part of multiple buckets
-* the "from upstream" and "from downstream" are a bit restrictive, it works with the "service" (see excalidraw) model but not others.
-    * is this true if we use the edge "name" ?
-    * Is there a way to give customers customizability?  There has to be a way to make this generic.
-        * Yes, the edge name should make this possible, we can generalize for the API and vend templates like "service"
 
+### Protobuf Generation
+* to regenerate the proto:
+
+```
+protoc -I=/Users/accupath/Workspace/experimental/users/ani.saraf/accupath/architectures/services/dd-go/pb/proto/trace/datapaths/ \
+    --python_out=/Users/accupath/Workspace/experimental/users/ani.saraf/accupath/architectures/services/dd-trace-py/ddtrace/internal/accupath/ \
+    --pyi_out=/Users/accupath/Workspace/experimental/users/ani.saraf/accupath/architectures/services/dd-trace-py/ddtrace/internal/accupath/ \
+    /Users/accupath/Workspace/experimental/users/ani.saraf/accupath/architectures/services/dd-go/pb/proto/trace/datapaths/payload.proto
+```
+
+
+### Python Specifics
+
+#### Logging
+Create loggers like this to allow toggles:
+
+```
 log = get_logger(__name__)
 
 _accupath_processor = processor._processor_singleton
 
 from ddtrace.internal.accupath.checkpoints import _time_checkpoint
 from ddtrace.internal.accupath.stats import _checkpoint_diff
-
-## Context Propagation:
-* Protocols generate points to send data and extract data
-    * Injection message
-    * Extraction message
-* On event, add in information or remove information
-    * We pass in information type, protocol handles encoding the information
+```
 
 
-* On receipt of injection event, return information to the protocol to propagate
-    * which event?
-    * method to add in information
-* On receipt of extraction event, grab information from the provided information
-    * which event?
-    * method to remove information
-
-
-## Observation recording:
-* Observations are recorded facts about the world at a given point in time, like "time this thing occurred"
-* When an event happens, we want to perform some action to record information
-
-* When an event happens, perform some action
-    * What event?
-    * When the event happens, what do I do?
-
-
-## Metrics Generation:
-* Metrics are generated values based on observations
-* When do I calculate it?
-
-* When is hard => but for now "when the last observation is recorded"
-* What do I do? => a method which knows which arguments to use
-
-## Coordinates:
-* Coordinates of a core event is the core event name.
-* Coordinates of an observation in AccuPath is "{system}.pathway_class.checkpoint_name
-    * system: "accupath"
-    * pathway_class: "service"
-    * checkpoint_name: method used to generate a checkpoint
-* Coordinates of a metric are 
-
-## More:
-* Traces are essentially pathways through execution
-* Observations within a pathway are part of a pathway (the execution context), and have a time
-    * Observations need to know that something happened to occur
-* We have to propagate/link information about what happened before.
-    * In python, we can use "core context" to act within a context within a given process 
-* A metric needs to know:
-    * Pathway: (provided by python core as context)
-    * (system - class): namespace within the context
-    * variable: variables to draw in, which live within the namespace
-    * trigger: when to calculate the metric
-    * destination: where to send the metric to (we can infer this from system - always send to system processor)
-
-
-## Pathway Processor
-* We want to bucketize on two things:
-    * A unique ID for the pathway
-    * A timeslot (for when a metric is emitted)
-
-* For service name, one possible unique path ID is (upstream path hash, downstream path hash)
-    * An issue is we don't know the downstream path hash until it is returned
-        * its also possible that something downstream loses the context (and then what?)
-    * Its a nice idea if everything works, because if we can emit metrics here based on the full path, we can emit the metrics for both
-        * if everything doesn't work, we can't attribute the request metrics with the same path as the downstream metrics
-        * this is 
-    * (time_bucket, unique_path_id):
-        * time_from_root
-        * time_from_parent
-        * time in service during request path
-        * time in service during response path
-
-
-## TODO
-* We need to get more accurate processing times.  Right now tracing the middleware on the response path is only the time for our response, not the rest of the middleware
-    * we can calculate/emit the time more correctly, but the header sent in the response will have the wrong timestamp
-    * multiple requests?
+### TODO and considerations
+- Right now everything is specific to services, we should treat this more broadly
+- Combine data models with DSM and APM
+- Add an environment variable to enable/disable AccuPath
+- Efficiency/trimming/length of headers and {un}marshalling
+- Expand beyond HTTP
+- Expand beyond synchronous linear requests
+- Testing -_-
+- Span links (future consideration)
+- How to handle downstream errors / partial paths
+    - How to combine with DSM
+- Think through the Core API more carefully
+- We can get more accurate processing times.  Right now tracing the middleware on the response path is only the time for our response, not the rest of the middleware
+- remove unused code
+- Look into implementing the POC in Go
+- Performance analysis
+- Security is a question, in particular for response pathway injection
+- Hostname isn't necessarily known by the tracer; it may have to be added by the agent, which is too late for injection
+- We aren't currently using the agent, we'll have to add that in
