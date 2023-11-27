@@ -106,7 +106,9 @@ class StackRenderer : public RendererInterface
   public:
     PyObject* pop()
     {
+        std::cout << "Popping (internal)" << std::endl;
         if (events.empty()) {
+            std::cout << "No events" << std::endl;
             Py_INCREF(Py_None);
             return Py_None;
         }
@@ -119,6 +121,7 @@ class StackRenderer : public RendererInterface
 
         PyObject* py_event = PyObject_CallObject(stack_based_event_type, NULL);
         if (py_event == NULL) {
+            std::cout << "Failed to create event" << std::endl;
             PyErr_Print();
             return NULL;
         }
@@ -141,6 +144,7 @@ class StackRenderer : public RendererInterface
             !safe_set_attr("thread_native_id", PyLong_FromUnsignedLong(event.native_id)) ||
             !safe_set_attr("cpu_time", PyLong_FromUnsignedLong(current_thread.cpu_time)) ||
             !safe_set_attr("nframes", PyLong_FromUnsignedLong(event.frames.size()))) {
+            std::cout << "Failed to populate scalar attributes" << std::endl;
             return NULL;
         }
 
@@ -237,12 +241,13 @@ stack_sampler_v2()
 
 // All interfaces use the same global instance of the renderer, since
 // it keeps persistent state
-std::shared_ptr<StackRenderer> renderer = std::make_shared<StackRenderer>();
+std::shared_ptr<StackRenderer> _renderer = std::make_shared<StackRenderer>();
 
 static PyObject*
 start(PyObject* self, PyObject* args)
 {
-    Renderer::get().set_renderer(renderer);
+    std::cout << "Starting stack sampler" << std::endl;
+    Renderer::get().set_renderer(_renderer);
 
     Py_BEGIN_ALLOW_THREADS;
     stack_sampler_v2();
@@ -253,7 +258,8 @@ start(PyObject* self, PyObject* args)
 static PyObject*
 collect(PyObject* self, PyObject* args)
 {
-    return renderer->pop();
+    std::cout << "Popping (external)" << std::endl;
+    return _renderer->pop();
 }
 
 static PyMethodDef _stack_v2_methods[] = { { "start", (PyCFunction)start, METH_VARARGS, "Start the sampler" },
