@@ -50,10 +50,6 @@ HTTP_HEADER_TRACE_ID = "x-datadog-trace-id"
 HTTP_HEADER_PARENT_ID = "x-datadog-parent-id"
 HTTP_HEADER_SAMPLING_PRIORITY = "x-datadog-sampling-priority"
 HTTP_HEADER_ORIGIN = "x-datadog-origin"
-
-
-
-
 _HTTP_HEADER_B3_SINGLE = "b3"
 _HTTP_HEADER_B3_TRACE_ID = "x-b3-traceid"
 _HTTP_HEADER_B3_SPAN_ID = "x-b3-spanid"
@@ -954,7 +950,7 @@ class HTTPPropagator(object):
             if config._propagation_extract_first:
                 # loop through the extract propagation styles specified in order, return whatever context we get first
                 log.debug("teague.bick - trying to extract context propagation styles %s", config._propagation_style_extract)
-            for prop_style in ['datadog']: #config._propagation_style_extract:
+                for prop_style in ['datadog']: #config._propagation_style_extract:
                     propagator = _PROP_STYLES[prop_style]
                     context = propagator._extract(normalized_headers)  # type: ignore
                     if config.propagation_http_baggage_enabled is True:

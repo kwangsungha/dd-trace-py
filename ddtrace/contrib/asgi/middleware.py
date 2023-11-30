@@ -1,13 +1,9 @@
 import sys
-<<<<<<< HEAD
 from typing import Any
 from typing import Mapping
 from typing import Optional
 from urllib import parse
-=======
-from typing import TYPE_CHECKING
 import uuid
->>>>>>> 4ad020e1b (Accupath v2)
 
 import ddtrace
 from ddtrace import Span
@@ -114,54 +110,55 @@ class TraceMiddleware:
         self.span_modifier = span_modifier
 
     async def __call__(self, scope, receive, send):
-<<<<<<< HEAD
-        if scope["type"] != "http":
-            return await self.app(scope, receive, send)
-        try:
-            headers = _extract_headers(scope)
-        except Exception:
-            log.warning("failed to decode headers for distributed tracing", exc_info=True)
-            headers = {}
-        else:
-            trace_utils.activate_distributed_headers(
-                self.tracer, int_config=self.integration_config, request_headers=headers
-            )
-
-        resource = " ".join((scope["method"], scope["path"]))
-        operation_name = self.integration_config.get("request_span_name", "asgi.request")
-        operation_name = schematize_url_operation(operation_name, direction=SpanDirection.INBOUND, protocol="http")
-        pin = ddtrace.pin.Pin(service="asgi", tracer=self.tracer)
-        with pin.tracer.trace(
-            name=operation_name,
-            service=trace_utils.int_service(None, self.integration_config),
-            resource=resource,
-            span_type=SpanTypes.WEB,
-        ) as span, core.context_with_data(
-            "asgi.__call__",
-            remote_addr=scope.get("REMOTE_ADDR"),
-            headers=headers,
-            headers_case_sensitive=True,
-            environ=scope,
-            middleware=self,
-            span=span,
-        ) as ctx:
-            span.set_tag_str(COMPONENT, self.integration_config.integration_name)
-            ctx.set_item("req_span", span)
-
-            # set span.kind to the type of request being performed
-            span.set_tag_str(SPAN_KIND, SpanKind.SERVER)
-
-            if "datadog" not in scope:
-                scope["datadog"] = {"request_spans": [span]}
+        with core.context_with_data(identifier=f"asgi request: {uuid.uuid4()}"):
+            if scope["type"] != "http":
+                return await self.app(scope, receive, send)
+            try:
+                headers = _extract_headers(scope)
+            except Exception:
+                log.warning("failed to decode headers for distributed tracing", exc_info=True)
+                headers = {}
             else:
-                scope["datadog"]["request_spans"].append(span)
+                # accupath: this call extracts headers for the request pathway
+                trace_utils.activate_distributed_headers(
+                    self.tracer, int_config=self.integration_config, request_headers=headers
+                )
 
-            if self.span_modifier:
-                self.span_modifier(span, scope)
+            resource = " ".join((scope["method"], scope["path"]))
+            operation_name = self.integration_config.get("request_span_name", "asgi.request")
+            operation_name = schematize_url_operation(operation_name, direction=SpanDirection.INBOUND, protocol="http")
+            pin = ddtrace.pin.Pin(service="asgi", tracer=self.tracer)
+            with pin.tracer.trace(
+                name=operation_name,
+                service=trace_utils.int_service(None, self.integration_config),
+                resource=resource,
+                span_type=SpanTypes.WEB,
+            ) as span, core.context_with_data(
+                "asgi.__call__",
+                remote_addr=scope.get("REMOTE_ADDR"),
+                headers=headers,
+                headers_case_sensitive=True,
+                environ=scope,
+                middleware=self,
+                span=span,
+            ) as ctx:
+                span.set_tag_str(COMPONENT, self.integration_config.integration_name)
+                ctx.set_item("req_span", span)
 
-            sample_rate = self.integration_config.get_analytics_sample_rate(use_global_config=True)
-            if sample_rate is not None:
-                span.set_tag(ANALYTICS_SAMPLE_RATE_KEY, sample_rate)
+                # set span.kind to the type of request being performed
+                span.set_tag_str(SPAN_KIND, SpanKind.SERVER)
+
+                if "datadog" not in scope:
+                    scope["datadog"] = {"request_spans": [span]}
+                else:
+                    scope["datadog"]["request_spans"].append(span)
+
+                if self.span_modifier:
+                    self.span_modifier(span, scope)
+
+                sample_rate = self.integration_config.get_analytics_sample_rate(use_global_config=True)
+                if sample_rate is not None:
+                    span.set_tag(ANALYTICS_SAMPLE_RATE_KEY, sample_rate)
 
             host_header = None
             for key, value in scope["headers"]:
@@ -199,11 +196,11 @@ class TraceMiddleware:
             if result:
                 receive, body = await result.value
 
-            client = scope.get("client")
-            if isinstance(client, list) and len(client):
-                peer_ip = client[0]
-            else:
-                peer_ip = None
+                client = scope.get("client")
+                if isinstance(client, list) and len(client):
+                    peer_ip = client[0]
+                else:
+                    peer_ip = None
 
             trace_utils.set_http_meta(
                 span,
@@ -220,12 +217,12 @@ class TraceMiddleware:
             tags = _extract_versions_from_scope(scope, self.integration_config)
             span.set_tags(tags)
 
-            async def wrapped_send(message):
-                try:
-                    response_headers = _extract_headers(message)
-                except Exception:
-                    log.warning("failed to extract response headers", exc_info=True)
-                    response_headers = None
+                async def wrapped_send(message):
+                    try:
+                        response_headers = _extract_headers(message)
+                    except Exception:
+                        log.warning("failed to extract response headers", exc_info=True)
+                        response_headers = None
 
                 if span and message.get("type") == "http.response.start" and "status" in message:
                     status_code = message["status"]
@@ -234,22 +231,22 @@ class TraceMiddleware:
                     )
                     core.dispatch("asgi.start_response", ("asgi",))
 
-                if core.get_item(HTTP_REQUEST_BLOCKED):
-                    raise trace_utils.InterruptException("wrapped_send")
-                try:
-                    return await send(message)
-                finally:
-                    # Per asgi spec, "more_body" is used if there is still data to send
-                    # Close the span if "http.response.body" has no more data left to send in the
-                    # response.
-                    if (
-                        message.get("type") == "http.response.body"
-                        and not message.get("more_body", False)
-                        # If the span has an error status code delay finishing the span until the
-                        # traceback and exception message is available
-                        and span.error == 0
-                    ):
-                        span.finish()
+                    if core.get_item(HTTP_REQUEST_BLOCKED):
+                        raise trace_utils.InterruptException("wrapped_send")
+                    try:
+                        return await send(message)
+                    finally:
+                        # Per asgi spec, "more_body" is used if there is still data to send
+                        # Close the span if "http.response.body" has no more data left to send in the
+                        # response.
+                        if (
+                            message.get("type") == "http.response.body"
+                            and not message.get("more_body", False)
+                            # If the span has an error status code delay finishing the span until the
+                            # traceback and exception message is available
+                            and span.error == 0
+                        ):
+                            span.finish()
 
             async def wrapped_blocked_send(message):
                 result = core.dispatch_with_results("asgi.block.started", (ctx, url)).status_headers_content
