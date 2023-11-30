@@ -2,7 +2,6 @@
 import os
 import logging
 from ddtrace.internal.accupath.node_info import NodeInfo, ROOT_NODE_ID, ROOT_NODE_REQUEST_OUT_TIME, PARENT_NODE_ID, PARENT_NODE_REQUEST_OUT_TIME
-from ddtrace.internal.accupath.path_info import EdgeInfo, PathInfo
 
 from ddsketch import LogCollapsingLowestDenseDDSketch
 from ddsketch.pb.proto import DDSketchProto
@@ -26,7 +25,6 @@ from ddtrace.internal.accupath.payload_pb2 import Paths
 from ddtrace.internal.accupath.payload_pb2 import Latencies
 from ddtrace.internal.accupath.payload_pb2 import PathDirection
 
-from ddtrace.internal.accupath.path_info import generate_request_pathway_id
 
 log = get_logger(f"accupath.{__name__}")
 log.setLevel(logging.DEBUG)
@@ -166,7 +164,7 @@ def generate_payload_v0(
     # REPRESENT PATHWAY
     pathway = PathwayInfo()
     pathway.root_service_hash = root_node_hash
-    pathway.node_hash = path_key_info.node_hash#generate_request_pathway_id(current_node_info=current_node_info, request_path_info=path_key_info.request_pathway_id)
+    pathway.node_hash = path_key_info.node_hash
     pathway.upstream_pathway_hash = path_key_info.request_pathway_id
     pathway.downstream_pathway_hash = path_key_info.response_pathway_id
     pathway_string = " -> ".join([

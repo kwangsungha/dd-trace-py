@@ -35,14 +35,6 @@ class NodeInfo:
         )
 
     @classmethod
-    def get_root_node_request_out_time(cls):
-        return core.get_item(ROOT_NODE_REQUEST_OUT_TIME)
-
-    @classmethod
-    def parent_request_out_time(cls):
-        return core.get_item(PARENT_NODE_REQUEST_OUT_TIME)
-
-    @classmethod
     def from_local_env(cls):
         service = os.environ.get("DD_SERVICE", "unnamed-python-service")
         env = os.environ.get("DD_ENV", "none")
@@ -64,14 +56,6 @@ class NodeInfo:
 
         return root_node_info
     
-    @classmethod
-    def get_parent_node_info(cls):
-        return core.get_item(PARENT_NODE_ID)
-    
-    @classmethod
-    def get_parent_request_out_time(cls):
-        return core.get_item(PARENT_NODE_REQUEST_OUT_TIME)
-
     def to_hash(self, isRoot=False):
         b = self.to_bytes(isRoot=isRoot)
         node_hash = fnv1_64(b)

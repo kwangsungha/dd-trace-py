@@ -11,7 +11,6 @@ from ddtrace.internal.logger import get_logger
 from ddtrace.internal.accupath.processor import _processor_singleton as _accupath_processor
 from ddtrace.internal import core
 from ddtrace.internal.utils.fnv import fnv1_64
-from ddtrace.internal.accupath.path_info import PathKey
 import struct
 
 log = get_logger('accupath')
@@ -432,6 +431,30 @@ class PathwayStats:
         self.root_to_response_out_latency = LogCollapsingLowestDenseDDSketch(0.00775, bin_limit=2048)
         self.root_to_response_out_latency_errors = LogCollapsingLowestDenseDDSketch(0.00775, bin_limit=2048)
 
+class PathKey:
+    def __init__(self, request_pathway_id, response_pathway_id, root_node_info, node_hash, request_id):
+        self.request_pathway_id = request_pathway_id
+        self.response_pathway_id = response_pathway_id
+        self.root_node_info = root_node_info
+        self.request_id = request_id
+        self.node_hash = node_hash
+
+    def __eq__(self, __value: object) -> bool:
+        if not isinstance(__value, PathKey):
+            return False
+
+        return all(
+            [
+                self.request_pathway_id == __value.request_pathway_id,
+                self.response_pathway_id == __value.response_pathway_id
+            ]
+        )
+    
+    def __hash__(self):
+        return hash((
+            self.request_pathway_id,
+            self.response_pathway_id
+            ))
 Bucket = NamedTuple(
     "Bucket",
     [
