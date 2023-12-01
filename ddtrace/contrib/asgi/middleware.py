@@ -23,6 +23,8 @@ from ...internal.compat import reraise
 from ...internal.logger import get_logger
 from .. import trace_utils
 from .utils import guarantee_single_callable
+from ddtrace.appsec import _handlers
+from ddtrace.internal import accupath
 
 
 log = get_logger(__name__)
@@ -110,9 +112,10 @@ class TraceMiddleware:
         self.span_modifier = span_modifier
 
     async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            return await self.app(scope, receive, send)
+
         with core.context_with_data(identifier=f"asgi request: {uuid.uuid4()}"):
-            if scope["type"] != "http":
-                return await self.app(scope, receive, send)
             try:
                 headers = _extract_headers(scope)
             except Exception:
@@ -224,6 +227,11 @@ class TraceMiddleware:
                         log.warning("failed to extract response headers", exc_info=True)
                         response_headers = None
 
+                    to_inject_headers = message.get('headers')
+                    if response_headers:
+                        core.dispatch('http.response.header.injection', [to_inject_headers])
+                        message['headers'] = to_inject_headers
+
                 if span and message.get("type") == "http.response.start" and "status" in message:
                     status_code = message["status"]
                     trace_utils.set_http_meta(
@@ -250,6 +258,7 @@ class TraceMiddleware:
 
             async def wrapped_blocked_send(message):
                 result = core.dispatch_with_results("asgi.block.started", (ctx, url)).status_headers_content
+                core.dispatch('http.response.header.injection', headers, status)
                 if result:
                     status, headers, content = result.value
                 else:

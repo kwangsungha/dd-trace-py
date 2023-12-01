@@ -202,7 +202,8 @@ def request_in_checkpoint(*args, **kwargs):
 def _generate_header(var_name):
     return f"x-datadog-{var_name.replace('_', '-').replace('.', '-')}"
 
-def inject_response_pathway_context(headers):
+def inject_response_pathway_context(headers, *args, **kwargs):
+    log.debug(f"inject.response context {core._CURRENT_CONTEXT.get().identifier} ")
     try:
         checkpoint_label = "accupath.request.context"
         current_pathway_context = core.get_item(checkpoint_label)
@@ -218,7 +219,7 @@ def inject_response_pathway_context(headers):
         ]
 
         for var_name, value in to_inject:
-            #log.debug(f"Starting to inject header for {var_name}")
+            log.debug(f"Starting to inject response header for {var_name}")
             HEADER = _generate_header(var_name)
 
             if value is not None:
@@ -229,11 +230,12 @@ def inject_response_pathway_context(headers):
                     headers[HEADER] = value
 
             #log.debug(f"accupath - injected value {value} into header {HEADER}")
-        #log.debug(f"Full headers are: {headers}")
+        #log.debug(f"Full injected response headers are: {headers}")
     except:
         log.debug("Error in inject_response_pathway_context", exc_info=True)
 
 def inject_request_pathway_context(headers):
+    log.debug(f"request.inject context {core._CURRENT_CONTEXT.get().identifier}")
     try:
         checkpoint_label = "accupath.request.context"
         current_pathway_context = core.get_item(checkpoint_label)
@@ -283,7 +285,7 @@ def _extract_single_header_value(var_name, headers):
 
 def extract_request_pathway_context(headers, *args, **kwargs):
     try:
-        #log.debug("request pathway extract started")
+        log.debug(f"request.extract context {core._CURRENT_CONTEXT.get().identifier}")
         #log.debug(f"Extracting from headers: {headers}")
 
         checkpoint_label = "accupath.request.context"
@@ -296,7 +298,8 @@ def extract_request_pathway_context(headers, *args, **kwargs):
 
 def response_in_checkpoint(headers, status_code, *args, **kwargs):
     try:
-        log.debug("Starting response_in context pathway")
+        #log.debug(f"response.extract context {core._CURRENT_CONTEXT.get().identifier}")
+        #log.debug(f"Extracting from headers: {headers} and status is {status_code}")
         checkpoint_label = "accupath.request.context"
         current_context = core.get_item(checkpoint_label)
         success = True
@@ -306,7 +309,7 @@ def response_in_checkpoint(headers, status_code, *args, **kwargs):
             current_context.checkpoints.append(return_pathway.checkpoints[-1])
             current_context.downstream_node_hash = 0
         else:
-            log.debug("here in response_in_checkpoint")
+            #log.debug(f"full extracted response headers are {headers}")
             success = (status_code < 400)
             return_pathway = AccuPathPathwayContext.from_headers(headers, direction="response")
             current_context.checkpoints.append(return_pathway.checkpoints[-1])
@@ -375,7 +378,7 @@ def submit_metrics():
 
 def response_out_checkpoint(headers, *args, **kwargs):
     try:
-        log.debug(f"response out checkpoint started from {core._CURRENT_CONTEXT.get().identifier}")
+        #log.debug(f"response out checkpoint started from {core._CURRENT_CONTEXT.get().identifier}")
         checkpoint_label = "accupath.request.context"
         current_context = core.get_item(checkpoint_label)
         if len(current_context.checkpoints) <= 3:
