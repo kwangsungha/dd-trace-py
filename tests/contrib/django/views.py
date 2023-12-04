@@ -1,8 +1,8 @@
 """
 Class based views used for Django tests.
 """
-
 from functools import partial
+import uuid
 
 from django.contrib.auth.models import User
 from django.contrib.syndication.views import Feed
@@ -186,7 +186,7 @@ def identify(request):
         tracer,
         user_id="usr.id",
         email="usr.email",
-        name="usr.name",
+        name=uuid.uuid4().hex if request.GET.get("uuid") else "usr.name",
         session_id="usr.session_id",
         role="usr.role",
         scope="usr.scope",

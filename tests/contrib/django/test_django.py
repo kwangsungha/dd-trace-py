@@ -2398,6 +2398,12 @@ def test_django_get_user(client, test_spans):
     assert root.get_tag(user.SCOPE) == "usr.scope"
 
 
+def test_django_get_user_uuid(client, test_spans):
+    assert client.get("/identify/?uuid=1").status_code == 200
+    root = test_spans.get_root_span()
+    assert root.get_tag(user.NAME) is not None
+
+
 @pytest.mark.skipif(django.VERSION < (2, 0, 0), reason="")
 def test_django_base_handler_failure(client, test_spans):
     """
