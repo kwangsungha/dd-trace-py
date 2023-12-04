@@ -13,6 +13,7 @@ from ddtrace.internal import packages
 from ddtrace.internal._encoding import ListStringTable as _StringTable
 from ddtrace.internal.compat import ensure_str
 from ddtrace.internal.datadog.profiling.utils import sanitize_string
+from ddtrace.internal.logger import get_logger
 from ddtrace.internal.utils import config
 from ddtrace.profiling import event
 from ddtrace.profiling import exporter
@@ -22,6 +23,8 @@ from ddtrace.profiling.collector import memalloc
 from ddtrace.profiling.collector import stack_event
 from ddtrace.profiling.collector import threading
 
+
+LOG = get_logger(__name__)
 
 if hasattr(typing, "TypedDict"):
     Package = typing.TypedDict(
@@ -274,6 +277,13 @@ class _PprofConverter(object):
         samples,  # type: typing.List[stack_event.StackSampleEvent]
     ):
         # type: (...) -> None
+        # If the type of the frame is not dtrace.profiling.event.DDFrame,
+        # then print the type
+        try:
+            if not isinstance(frames[0], event.DDFrame):
+                LOG.error("frame type: %s", type(frames[0]))
+        except IndexError:
+            LOG.error("frames is empty")
         location_key = (
             self._to_locations(frames, nframes),
             (
@@ -286,7 +296,6 @@ class _PprofConverter(object):
                 ("span id", span_id),
                 ("trace endpoint", trace_resource),
                 ("trace type", trace_type),
-                ("class name", frames[0][3]),
             ),
         )
 
@@ -361,7 +370,6 @@ class _PprofConverter(object):
                 ("trace endpoint", trace_resource),
                 ("trace type", trace_type),
                 ("lock name", lock_name),
-                ("class name", frames[0][3]),
             ),
         )
 
@@ -399,7 +407,6 @@ class _PprofConverter(object):
                 ("trace endpoint", trace_resource),
                 ("trace type", trace_type),
                 ("lock name", lock_name),
-                ("class name", frames[0][3]),
             ),
         )
 
@@ -433,7 +440,6 @@ class _PprofConverter(object):
                 ("trace endpoint", trace_resource),
                 ("trace type", trace_type),
                 ("exception type", exc_type_name),
-                ("class name", frames[0][3]),
             ),
         )
 

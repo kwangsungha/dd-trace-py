@@ -12,6 +12,7 @@ from ddtrace import context
 from ddtrace import span as ddspan
 from ddtrace.internal import compat
 from ddtrace.internal.datadog.profiling import ddup
+from ddtrace.internal.logger import get_logger
 from ddtrace.internal.utils import formats
 from ddtrace.profiling import _threading
 from ddtrace.profiling import collector
@@ -20,6 +21,9 @@ from ddtrace.profiling.collector import _traceback
 from ddtrace.profiling.collector import stack_event
 from ddtrace.profiling.collector import stack_v2
 from ddtrace.settings.profiling import config
+
+
+LOG = get_logger(__name__)
 
 
 # These are special features that might not be available depending on your Python version and platform
@@ -505,6 +509,9 @@ class StackCollector(collector.PeriodicCollector):
         set_use_libdd(config.export.libdd_enabled)
         set_use_py(config.export.py_enabled)
 
+        if self._stack_collector_v2_enabled:
+            stack_v2.start(max_frames=self.nframes, min_interval=self.min_interval_time)
+
     def _start_service(self):
         # type: (...) -> None
         # This is split in its own function to ease testing
@@ -528,9 +535,13 @@ class StackCollector(collector.PeriodicCollector):
         self._last_wall_time = now
 
         if self._stack_collector_v2_enabled:
-            all_events = stack_v2.collect()
-            if not all_events:
-                all_events = []
+            stack_events = []
+            while True:
+                event = stack_v2.collect()
+                if not event:
+                    break
+                stack_events.append(event)
+            all_events = stack_events, []
         else:
             all_events = stack_collect(
                 self.ignore_profiler,
