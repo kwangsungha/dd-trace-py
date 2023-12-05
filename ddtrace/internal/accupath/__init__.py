@@ -39,6 +39,7 @@ class AccuPathPathwayContext:
         self.upstream_node_hash = 0
         self.node_hash = self.checkpoints[-1].checkpoint_hash
         self.downstream_node_hash = -1
+        self.resource_name = "undefined"
 
     def add_checkpoint(self, checkpoint):
         self.checkpoints.append(checkpoint)
@@ -53,6 +54,7 @@ class AccuPathPathwayContext:
             "upstream_node_hash": self.upstream_node_hash,
             "node_hash": self.node_hash,
             "downstream_node_hash": self.downstream_node_hash,
+            "resource_name": self.resource_name,
             #"checkpoints": [str(chk) for chk in self.checkpoints]
         })
         return output
@@ -183,17 +185,22 @@ def new_pathway_checkpoint(pathway_tag="default", *args, **kwargs):
 
 def request_out_checkpoint(*args, **kwargs):
     #log.debug(f"Resuming pathway in context {core._CURRENT_CONTEXT.get().identifier}")
-    checkpoint_label = "accupath.request.context"
-    current_pathway_context = core.get_item(checkpoint_label)
+    current_pathway_context = _get_current_pathway_context()
     new_checkpoint = AccuPathCheckpointContext("request_out", current_pathway_context.checkpoints[-1].checkpoint_hash, time.time_ns())
     current_pathway_context.add_checkpoint(new_checkpoint)
     #log.debug(f"Resumed pathway {current_pathway_context}")
 
+def _get_current_pathway_context(checkpoint_label="accupath.request.context"):
+    current_pathway_context = core.get_item(checkpoint_label)
+    if not current_pathway_context:
+        current_pathway_context = AccuPathPathwayContext("default")
+        core.set_item(checkpoint_label, current_pathway_context)
+    return current_pathway_context
 
 def request_in_checkpoint(*args, **kwargs):
     #log.debug(f"Resuming pathway in context {core._CURRENT_CONTEXT.get().identifier}")
     checkpoint_label = "accupath.request.context"
-    current_pathway_context = core.get_item(checkpoint_label)
+    current_pathway_context = _get_current_pathway_context(checkpoint_label)
     new_checkpoint = AccuPathCheckpointContext("request_in", current_pathway_context.checkpoints[-1].checkpoint_hash, time.time_ns())
     current_pathway_context.add_checkpoint(new_checkpoint)
     #log.debug(f"Resumed pathway {current_pathway_context}")
@@ -206,7 +213,7 @@ def inject_response_pathway_context(headers, *args, **kwargs):
     log.debug(f"inject.response context {core._CURRENT_CONTEXT.get().identifier} ")
     try:
         checkpoint_label = "accupath.request.context"
-        current_pathway_context = core.get_item(checkpoint_label)
+        current_pathway_context = _get_current_pathway_context(checkpoint_label)
         #log.debug(f"inject starting for {current_pathway_context}")
 
         to_inject = [
@@ -238,7 +245,7 @@ def inject_request_pathway_context(headers):
     log.debug(f"request.inject context {core._CURRENT_CONTEXT.get().identifier}")
     try:
         checkpoint_label = "accupath.request.context"
-        current_pathway_context = core.get_item(checkpoint_label)
+        current_pathway_context = _get_current_pathway_context(checkpoint_label)
         #log.debug(f"inject starting for {current_pathway_context}")
 
         to_inject = [
@@ -337,12 +344,14 @@ def submit_metrics():
             request_in_time = int(current_context.checkpoints[0].checkpoint_time)
 
 
+        log.debug(f"Creating path key: {current_context.resource_name}")
         path_key = PathKey(
             request_pathway_id=current_context.upstream_node_hash,
             response_pathway_id=current_context.downstream_node_hash,
             root_node_info=current_context.root_node_info,
             node_hash=current_context.node_hash,
-            request_id=current_context.uid
+            request_id=current_context.uid,
+            resource_name = current_context.resource_name
         )
 
 
@@ -381,6 +390,7 @@ def response_out_checkpoint(headers, *args, **kwargs):
         #log.debug(f"response out checkpoint started from {core._CURRENT_CONTEXT.get().identifier}")
         checkpoint_label = "accupath.request.context"
         current_context = core.get_item(checkpoint_label)
+        current_context.resource_name = core.get_item("span_resource")
         if len(current_context.checkpoints) <= 3:
             # Handle the last link in a chain of requests
             response_in_checkpoint(headers=None, status_code=200)
@@ -391,6 +401,7 @@ def response_out_checkpoint(headers, *args, **kwargs):
         new_checkpoint = AccuPathCheckpointContext("response_out", current_context.checkpoints[-1].checkpoint_hash, time.time_ns())
         current_context.add_checkpoint(new_checkpoint)
         log.debug(f"finished response out {checkpoint_label} - {current_context}")
+        log.debug(f"submitting metrics and see path key: {current_context.resource_name} - {core.get_item('span_resource')}")
         submit_metrics()
     except:
         log.error("Error in response_out_checkpoint", exc_info=True)
@@ -435,12 +446,13 @@ class PathwayStats:
         self.root_to_response_out_latency_errors = LogCollapsingLowestDenseDDSketch(0.00775, bin_limit=2048)
 
 class PathKey:
-    def __init__(self, request_pathway_id, response_pathway_id, root_node_info, node_hash, request_id):
+    def __init__(self, request_pathway_id, response_pathway_id, root_node_info, node_hash, request_id, resource_name):
         self.request_pathway_id = request_pathway_id
         self.response_pathway_id = response_pathway_id
         self.root_node_info = root_node_info
         self.request_id = request_id
         self.node_hash = node_hash
+        self.resource_name = resource_name
 
     def __eq__(self, __value: object) -> bool:
         if not isinstance(__value, PathKey):

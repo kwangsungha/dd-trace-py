@@ -159,7 +159,7 @@ def generate_payload_v0(
     # REPRESENT THIS EDGE
     edge = EdgeID()
     edge.type = EdgeType.HTTP
-    edge.name = "foo"  # What are the requirements for the name?
+    edge.name = path_key_info.resource_name
 
     # REPRESENT PATHWAY
     pathway = PathwayInfo()
@@ -172,7 +172,8 @@ def generate_payload_v0(
         f"Time Bucket: {bucket_start_time}",
         f"upstream: {path_key_info.request_pathway_id}",
         f"current: {path_key_info.node_hash} - {current_node_info.service}, {current_node_info.env}",
-        f"downstream: {path_key_info.response_pathway_id}"
+        f"downstream: {path_key_info.response_pathway_id}",
+        f"resource: {path_key_info.resource_name}"
     ])
     log.debug(f"accupath payload -  {pathway_string}")
 

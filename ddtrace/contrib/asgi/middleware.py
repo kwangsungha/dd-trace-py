@@ -131,6 +131,9 @@ class TraceMiddleware:
             operation_name = self.integration_config.get("request_span_name", "asgi.request")
             operation_name = schematize_url_operation(operation_name, direction=SpanDirection.INBOUND, protocol="http")
             pin = ddtrace.pin.Pin(service="asgi", tracer=self.tracer)
+            log.warn(f"setting resource name")
+            log.warn(f"setting resource name to {resource}")
+            core.set_item('span_resource', resource)
             with pin.tracer.trace(
                 name=operation_name,
                 service=trace_utils.int_service(None, self.integration_config),
@@ -147,6 +150,8 @@ class TraceMiddleware:
             ) as ctx:
                 span.set_tag_str(COMPONENT, self.integration_config.integration_name)
                 ctx.set_item("req_span", span)
+                log.warn(f"setting resource name")
+                log.warn(f"setting resource name to {resource}")
 
                 # set span.kind to the type of request being performed
                 span.set_tag_str(SPAN_KIND, SpanKind.SERVER)
