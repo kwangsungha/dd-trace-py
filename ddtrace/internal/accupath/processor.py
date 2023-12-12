@@ -159,7 +159,8 @@ def generate_payload_v0(
     # REPRESENT THIS EDGE
     edge = EdgeID()
     edge.type = EdgeType.HTTP
-    edge.name = path_key_info.resource_name
+    log.debug(f"Setting resource name to: {path_key_info.resource_name}")
+    edge.name = path_key_info.resource_name or ""
 
     # REPRESENT PATHWAY
     pathway = PathwayInfo()
