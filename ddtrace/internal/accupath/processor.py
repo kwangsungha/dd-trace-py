@@ -34,7 +34,7 @@ log.setLevel(logging.DEBUG)
 ACCUPATH_BASE_URL = "https://trace-internal.agent.datad0g.com"
 ACCUPATH_TIMEOUT = 10
 ACCUPATH_ENDPOINT = "/api/v0.2/datapaths"
-ACCUPATH_COLLECTION_DURATION = 10  # 10 seconds?
+ACCUPATH_COLLECTION_DURATION = 10  # 10 seconds
 
 class _AccuPathProcessor(PeriodicService):
     def __init__(self, interval=10):

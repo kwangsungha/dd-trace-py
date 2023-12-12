@@ -225,7 +225,7 @@ class _DatadogMultiHeader:
         else:
             headers[HTTP_HEADER_TRACE_ID] = str(span_context.trace_id)
 
-        core.dispatch("http.request.header.injection", headers)
+        core.dispatch("http.request.header.injection", [headers])
 
         headers[HTTP_HEADER_PARENT_ID] = str(span_context.span_id)
         sampling_priority = span_context.sampling_priority
@@ -278,7 +278,7 @@ class _DatadogMultiHeader:
         except ValueError:
             trace_id = 0
 
-        core.dispatch("http.request.header.extraction", headers)
+        core.dispatch("http.request.header.extraction", [headers])
 
         if trace_id <= 0 or trace_id > _MAX_UINT_64BITS:
             log.warning(

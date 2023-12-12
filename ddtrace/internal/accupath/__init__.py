@@ -279,6 +279,7 @@ def _extract_single_header_value(var_name, headers):
     HEADER = _generate_header(var_name)
     #log.debug(f"extracting value {var_name} from header {HEADER}")
 
+    value = None
     if isinstance(headers, dict):
         value = headers[HEADER]
     elif isinstance(headers, list):
@@ -286,14 +287,14 @@ def _extract_single_header_value(var_name, headers):
             if k == value:
                 value = v.decode('utf-8')
                 break
-    #log.debug(f"accupath - extracted value {value} from header {HEADER} and put it into {var_name}")
+    log.debug(f"accupath - extracted value {value} from header {HEADER} and put it into {var_name}")
     return value
 
 
 def extract_request_pathway_context(headers, *args, **kwargs):
     try:
         log.debug(f"request.extract context {core._CURRENT_CONTEXT.get().identifier}")
-        #log.debug(f"Extracting from headers: {headers}")
+        log.debug(f"Extracting from headers: {headers}")
 
         checkpoint_label = "accupath.request.context"
         current_context = AccuPathPathwayContext.from_headers(headers, direction="request")

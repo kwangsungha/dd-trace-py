@@ -23,6 +23,7 @@ from ...internal.compat import reraise
 from ...internal.logger import get_logger
 from .. import trace_utils
 from .utils import guarantee_single_callable
+from ddtrace.internal import accupath
 
 
 log = get_logger(__name__)
@@ -127,6 +128,7 @@ class TraceMiddleware:
             operation_name = self.integration_config.get("request_span_name", "asgi.request")
             operation_name = schematize_url_operation(operation_name, direction=SpanDirection.INBOUND, protocol="http")
             pin = ddtrace.pin.Pin(service="asgi", tracer=self.tracer)
+            core.set_item('span_resource', resource)
             with pin.tracer.trace(
                 name=operation_name,
                 service=trace_utils.int_service(None, self.integration_config),
