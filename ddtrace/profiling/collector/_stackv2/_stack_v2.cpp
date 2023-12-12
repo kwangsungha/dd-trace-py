@@ -294,7 +294,7 @@ start(PyObject* self, PyObject* args, PyObject* kwargs)
     // TODO: better conversion
     std::cout << "Setting interval to " << (min_interval_f*1e6) << std::endl;
     _set_interval(min_interval_f*1e6); // fractional seconds to us
-    init_frame_cache(max_frames_f);
+    init_frame_cache(512); // TODO don't hardcode this?
 
     _set_pid(getpid()); // TODO follow forks
     Renderer::get().set_renderer(_renderer);
