@@ -437,6 +437,12 @@ def unpatch():
 
 
 def _set_test_span_status(test_item, status: str, exc_info: str = None, skip_reason: str = None):
+    from traceback import print_stack
+
+    print(f"\n{'v' * 80}\n")
+    print(f"{test_item=}, {status=}, {exc_info=}, {skip_reason=}\n\n")
+    print_stack()
+    print(f"\n{'^' * 80}\n")
     span = _extract_span(test_item)
     if not span:
         log.debug("Tried setting test result for test but could not find span for %s", test_item)
