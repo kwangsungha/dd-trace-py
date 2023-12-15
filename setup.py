@@ -5,6 +5,7 @@ import re
 import shutil
 import subprocess
 import sys
+import sysconfig
 import tarfile
 
 
@@ -323,11 +324,17 @@ class CMakeBuild(build_ext):
         cmake_build_dir = os.path.abspath(os.path.join(self.build_lib.replace("lib.", "cmake."), ext.name))
         os.makedirs(cmake_build_dir, exist_ok=True)
 
+        # Get development paths
+        python_include = sysconfig.get_paths()["include"]
+        python_lib = sysconfig.get_config_var("LIBDIR")
+
         # Which commands are passed to _every_ cmake invocation
         cmake_args = ext.cmake_args or []
         cmake_args += [
             "-S{}".format(ext.source_dir),  # cmake>=3.13
             "-B{}".format(cmake_build_dir),  # cmake>=3.13
+            "-DPython3_INCLUDE_DIRS={}".format(python_include),
+            "-DPython3_LIBRARIES={}".format(python_lib),
             "-DEXTENSION_NAME={}".format(ext.name),
             "-DPYTHON_EXECUTABLE={}".format(sys.executable),
             "-DCMAKE_BUILD_TYPE={}".format(ext.build_type),

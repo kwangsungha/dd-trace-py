@@ -173,7 +173,7 @@ class _ProfilerInstance(service.Service):
         if self.endpoint_collection_enabled:
             endpoint_call_counter_span_processor.enable()
 
-        if self._export_libdd_enabled or self._stack_collector_v2_enabled:
+        if self._export_libdd_enabled:
             versionname = (
                 "{}.libdd".format(self.version)
                 if self._export_py_enabled and self.version is not None

@@ -2,6 +2,7 @@
 import collections
 import threading
 import typing
+import logging
 
 import attr
 
@@ -9,6 +10,9 @@ from ddtrace.internal import forksafe
 from ddtrace.settings.profiling import config
 
 from . import event
+
+
+LOG = logging.getLogger(__name__)
 
 
 class _defaultdictkey(dict):

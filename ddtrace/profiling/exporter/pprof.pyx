@@ -4,6 +4,7 @@ import operator
 import platform
 import sysconfig
 import typing
+import sys
 
 import attr
 import six
@@ -283,7 +284,7 @@ class _PprofConverter(object):
             if not isinstance(frames[0], event.DDFrame):
                 LOG.error("frame type: %s", type(frames[0]))
         except IndexError:
-            LOG.error("frames is empty")
+            LOG.debug("frames is empty")
         location_key = (
             self._to_locations(frames, nframes),
             (

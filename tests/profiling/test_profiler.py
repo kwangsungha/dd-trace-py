@@ -179,6 +179,13 @@ def test_disable_memory():
 
     assert all(not isinstance(col, memalloc.MemoryCollector) for col in profiler.Profiler()._profiler._collectors)
 
+@pytest.mark.subprocess(env=dict(DD_PROFILING_STACK_V2_ENABLED=false="true"))
+def test_enable_stack_v2():
+    from ddtrace.profiling import profiler
+    from ddtrace.profiling.collector import memalloc
+
+    assert all(not isinstance(col, memalloc.MemoryCollector) for col in profiler.Profiler()._profiler._collectors)
+
 
 @pytest.mark.subprocess(
     env=dict(DD_PROFILING_AGENTLESS="true", DD_API_KEY="foobar", DD_SITE=None),
