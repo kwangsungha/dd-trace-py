@@ -1,8 +1,6 @@
-import sys
 from time import sleep
 
 from mock.mock import ANY
-import pytest
 
 from ddtrace.internal.telemetry.constants import TELEMETRY_NAMESPACE_TAG_APPSEC
 from ddtrace.internal.telemetry.constants import TELEMETRY_NAMESPACE_TAG_TRACER
@@ -22,13 +20,15 @@ def _assert_metric(
     test_agent.telemetry_writer.periodic()
     events = test_agent.get_events()
 
-    assert len([event for event in events if event["request_type"] == type_paypload]) == seq_id
+    filtered_events = [event for event in events if event["request_type"] != "app-dependencies-loaded"]
+
+    assert len([event for event in filtered_events if event["request_type"] == type_paypload]) == seq_id
 
     payload = {
         "namespace": namespace,
         "series": expected_series,
     }
-    assert events[0]["request_type"] == type_paypload
+    assert filtered_events[0]["request_type"] == type_paypload
 
     # Python 2.7 and Python 3.5 fail with dictionaries and lists order
     expected_body = _get_request_body(payload, type_paypload, seq_id)
@@ -37,8 +37,8 @@ def _assert_metric(
         metric["tags"].sort()
     expected_body_sorted.sort(key=lambda x: (x["metric"], x["tags"], x.get("type")), reverse=False)
 
-    events.sort(key=lambda x: x["seq_id"], reverse=True)
-    result_event = events[0]["payload"]["series"]
+    filtered_events.sort(key=lambda x: x["seq_id"], reverse=True)
+    result_event = filtered_events[0]["payload"]["series"]
     for metric in result_event:
         metric["tags"].sort()
     result_event.sort(key=lambda x: (x["metric"], x["tags"], x.get("type")), reverse=False)
@@ -368,7 +368,6 @@ def test_send_log_metric_simple(telemetry_writer, test_agent_session, mock_time)
     _assert_logs(test_agent_session, expected_payload)
 
 
-@pytest.mark.skipif(sys.version_info < (3, 6, 0), reason="Python 3.6+ only, tags order fails on 2.7 and 3.5")
 def test_send_log_metric_simple_tags(telemetry_writer, test_agent_session, mock_time):
     """Check the queue of metrics is empty after run periodic method of PeriodicService"""
     telemetry_writer.add_log("WARNING", "test error 1", tags={"a": "b", "c": "d"})
