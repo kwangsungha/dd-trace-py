@@ -60,4 +60,5 @@ class REQUESTS_MODE(IntEnum):
 # Miscellaneous constants
 CUSTOM_CONFIGURATIONS_PREFIX = "test.configuration"
 
+# Filter for CI Visibility log handler
 CIVISIBILITY_LOG_FILTER_RE = r"^ddtrace\.(contrib\.(coverage|pytest|unittest)|internal\.ci_visibility|ext\.git)"
