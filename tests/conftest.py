@@ -355,8 +355,8 @@ setup(
 
 
 @pytest.fixture
-def git_repo_empty(tmpdir):
-    yield utils.git_repo_empty(tmpdir)
+def git_repo_empty(testdir):
+    yield utils.git_repo_empty(testdir)
 
 
 @pytest.fixture

@@ -1179,9 +1179,12 @@ def package_installed(package_name):
         return False
 
 
-def git_repo_empty(tmpdir):
+def git_repo_empty(tmpdir, testdir=None):
     """Create temporary empty git directory, meaning no commits/users/repository-url to extract (error)"""
-    cwd = str(tmpdir)
+    if testdir is None:
+        cwd = str(tmpdir)
+    else:
+        cwd = str(testdir)
     version = subprocess.check_output("git version", shell=True)
     # decode "git version 2.28.0" to (2, 28, 0)
     decoded_version = tuple(int(n) for n in version.decode().strip().split(" ")[-1].split(".") if n.isdigit())

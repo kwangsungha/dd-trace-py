@@ -17,30 +17,37 @@ from ddtrace.ext import test
 from ddtrace.internal.ci_visibility import CIVisibility
 from ddtrace.internal.ci_visibility.constants import COVERAGE_TAG_NAME
 from ddtrace.internal.ci_visibility.encoder import CIVisibilityEncoderV01
+from ddtrace.internal.ci_visibility.git_client import CIVisibilityGitClient, METADATA_UPLOAD_STATUS
 from ddtrace.internal.ci_visibility.recorder import _CIVisibilitySettings
 from tests.ci_visibility.util import _patch_dummy_writer
 from tests.contrib.patch import emit_integration_and_version_to_test_agent
 from tests.utils import TracerTestCase
 from tests.utils import override_env
 
-
 class PytestTestCase(TracerTestCase):
-    @pytest.fixture(autouse=True)
+    @pytest.fixture(scope="function", autouse=True)
     def fixtures(self, testdir, monkeypatch, git_repo):
         self.testdir = testdir
         self.monkeypatch = monkeypatch
         self.git_repo = git_repo
 
-    @pytest.fixture(autouse=True)
-    def _dummy_check_enabled_features(self):
-        """By default, assume that _check_enabled_features() returns an ITR-disabled response.
+    @pytest.fixture(scope="function", autouse=True)
+    def _dummy_service_patches(self):
+        """Patches a variety of things to prevent tests in this class from making calls to live APIS
+        By default, assume that _check_enabled_features() returns an ITR-disabled response.
 
         Tests that need a different response should re-patch the CIVisibility object.
         """
-        with mock.patch(
+
+        def _mock_upload_git_metadata(obj, **kwargs):
+            obj._metadata_upload_status=METADATA_UPLOAD_STATUS.SUCCESS
+
+        with (mock.patch(
             "ddtrace.internal.ci_visibility.recorder.CIVisibility._check_enabled_features",
             return_value=_CIVisibilitySettings(False, False, False, False),
-        ):
+        ), mock.patch.multiple(CIVisibilityGitClient, upload_git_metadata=_mock_upload_git_metadata, _do_request=NotImplementedError
+        ), mock.patch("ddtrace.internal.ci_visibility.recorder._do_request", side_effect=NotImplementedError
+        )):
             yield
 
     def inline_run(self, *args):
@@ -55,7 +62,7 @@ class PytestTestCase(TracerTestCase):
                         CIVisibility.disable()
                         CIVisibility.enable(tracer=self.tracer, config=ddtrace.config.pytest)
 
-        with override_env(dict(DD_API_KEY="foobar.baz")):
+        with override_env(dict(DD_API_KEY="foobar.baz", DD_INSTRUMENTATION_TELEMETRY_ENABLED="false")):
             return self.testdir.inline_run(*args, plugins=[CIVisibilityPlugin()])
 
     def subprocess_run(self, *args):
@@ -629,6 +636,7 @@ class PytestTestCase(TracerTestCase):
         """
         )
         file_name = os.path.basename(py_file.strpath)
+        breakpoint()
         rec = self.inline_run("--ddtrace", file_name)
         rec.assertoutcome(passed=1)
         spans = self.pop_spans()
