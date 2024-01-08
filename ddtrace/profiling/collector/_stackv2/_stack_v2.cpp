@@ -5,13 +5,12 @@
 #endif
 
 #include <atomic>
+#include <chrono>
 #include <fcntl.h>
 #include <fstream>
 #include <iostream>
-#include <vector>
-#include <chrono>
 #include <thread>
-#include <iostream>
+#include <vector>
 
 #include "echion/config.h"
 #include "echion/interp.h"
@@ -31,8 +30,7 @@ struct DDFrame
       : filename{ std::string(filename) }
       , name{ std::string(name) }
       , line{ line }
-    {
-    }
+    {}
 };
 
 using StackTrace = std::vector<DDFrame>;
@@ -57,7 +55,11 @@ struct CachedThread
     uintptr_t thread_id;
     unsigned long native_id;
 
-    void set(std::string_view name, microsecond_t cpu_time, microsecond_t wall_time, uintptr_t thread_id, unsigned long native_id)
+    void set(std::string_view name,
+             microsecond_t cpu_time,
+             microsecond_t wall_time,
+             uintptr_t thread_id,
+             unsigned long native_id)
     {
         this->name = name;
         this->cpu_time = cpu_time;
@@ -71,7 +73,7 @@ class StackRenderer : public RendererInterface
 {
     StackSampleEvent current_event;
     std::array<std::vector<StackSampleEvent>, 2> event_buffers;
-    std::vector<StackSampleEvent>* events_in = &event_buffers[0]; // input buffer
+    std::vector<StackSampleEvent>* events_in = &event_buffers[0];  // input buffer
     std::vector<StackSampleEvent>* events_out = &event_buffers[1]; // output buffer
     CachedThread current_thread;
     static PyObject* stack_sample_event_type;
@@ -79,7 +81,7 @@ class StackRenderer : public RendererInterface
 
     void render_message(std::string_view msg) override { (void)msg; }
 
-    void render_thread_begin(PyThreadState *tstate,
+    void render_thread_begin(PyThreadState* tstate,
                              std::string_view name,
                              microsecond_t wall_time,
                              uintptr_t thread_id,
@@ -100,9 +102,10 @@ class StackRenderer : public RendererInterface
         current_event.frames.emplace_back(file, name, line);
     }
 
-    void render_cpu_time(uint64_t cpu_time) override {
-      // TODO weird that we have an unused cpu_time in the CachedThread now
-      current_event.cpu_time = cpu_time;
+    void render_cpu_time(uint64_t cpu_time) override
+    {
+        // TODO weird that we have an unused cpu_time in the CachedThread now
+        current_event.cpu_time = cpu_time;
     }
 
     void render_stack_end() override
@@ -122,7 +125,7 @@ class StackRenderer : public RendererInterface
   public:
     PyObject* pop()
     {
-        std::vector<StackSampleEvent> &events = *events_out;
+        std::vector<StackSampleEvent>& events = *events_out;
         if (events.empty()) {
             Py_INCREF(Py_None);
             return Py_None;
@@ -158,8 +161,8 @@ class StackRenderer : public RendererInterface
         if (!safe_set_attr("thread_id", PyLong_FromUnsignedLong(event.thread_id)) ||
             !safe_set_attr("thread_name", PyUnicode_FromString(event.thread_name.c_str())) ||
             !safe_set_attr("thread_native_id", PyLong_FromUnsignedLong(event.native_id)) ||
-            !safe_set_attr("wall_time_ns", PyLong_FromUnsignedLong(1000*event.wall_time)) ||
-            !safe_set_attr("cpu_time_ns", PyLong_FromUnsignedLong(1000*event.cpu_time)) ||
+            !safe_set_attr("wall_time_ns", PyLong_FromUnsignedLong(1000 * event.wall_time)) ||
+            !safe_set_attr("cpu_time_ns", PyLong_FromUnsignedLong(1000 * event.cpu_time)) ||
             !safe_set_attr("sampling_period", PyLong_FromUnsignedLong(1000)) ||
             !safe_set_attr("nframes", PyLong_FromUnsignedLong(event.frames.size()))) {
             std::cout << "Failed to populate scalar attributes" << std::endl;
@@ -173,9 +176,9 @@ class StackRenderer : public RendererInterface
             return NULL;
         }
 
-        for (auto &frame : event.frames) {
-            PyObject *py_frame = PyObject_CallFunction(ddframe_type, "sLss", frame.filename.c_str(), static_cast<long>(frame.line),
-                                                       frame.name.c_str(), "");
+        for (auto& frame : event.frames) {
+            PyObject* py_frame = PyObject_CallFunction(
+              ddframe_type, "sLss", frame.filename.c_str(), static_cast<long>(frame.line), frame.name.c_str(), "");
 
             if (py_frame == NULL) {
                 PyErr_Print();
@@ -218,8 +221,7 @@ class StackRenderer : public RendererInterface
         return py_event;
     }
 
-    void
-    set_type()
+    void set_type()
     {
         PyObject* mod_name = PyUnicode_FromString("ddtrace.profiling.event");
         PyObject* mod = PyImport_Import(mod_name);
@@ -252,18 +254,14 @@ class StackRenderer : public RendererInterface
         }
     }
 
-    void
-    swap_buffers()
-    {
-        std::swap(events_in, events_out);
-    }
+    void swap_buffers() { std::swap(events_in, events_out); }
 
-    void normalize_cpu_time() {
-      // Goes through the cached threads and counts the number of running threads (nonzero cpu time)
-      // then normalizes those times by the number of running threads
-      auto num_running_threads = std::count_if(events_in->begin(), events_in->end(), [](const StackSampleEvent& event) {
-        return event.thread_id != 0;
-      });
+    void normalize_cpu_time()
+    {
+        // Goes through the cached threads and counts the number of running threads (nonzero cpu time)
+        // then normalizes those times by the number of running threads
+        auto num_running_threads = std::count_if(
+          events_in->begin(), events_in->end(), [](const StackSampleEvent& event) { return event.thread_id != 0; });
     }
 };
 
@@ -271,14 +269,13 @@ class StackRenderer : public RendererInterface
 PyObject* StackRenderer::stack_sample_event_type = nullptr;
 PyObject* StackRenderer::ddframe_type = nullptr;
 
-
 // Accepts fractional seconds, saves variable as integral us
 std::atomic<unsigned long> sample_interval = 10000; // in us
 static void
 _set_v2_interval(double new_interval)
 {
-  unsigned int new_interval_us = static_cast<unsigned int>(new_interval*1e6);
-  sample_interval.store(new_interval_us);
+    unsigned int new_interval_us = static_cast<unsigned int>(new_interval * 1e6);
+    sample_interval.store(new_interval_us);
 }
 
 void
@@ -298,11 +295,10 @@ _stack_sampler_v2()
         int num_interps = 0;
         for_each_interp([&](PyInterpreterState* interp) -> void {
             num_interps++;
-            for_each_thread(
-              interp, [&](PyThreadState* tstate, ThreadInfo& thread) {
+            for_each_thread(interp, [&](PyThreadState* tstate, ThreadInfo& thread) {
                 num_threads++;
                 thread.sample(interp->id, tstate, wall_time);
-              });
+            });
         });
 
         // Sleep for the remainder of the interval, get it atomically
@@ -317,7 +313,8 @@ stack_sampler_v2()
     std::thread(_stack_sampler_v2).detach();
 }
 
-void make_it_abort()
+void
+make_it_abort()
 {
     std::abort();
 }
@@ -329,12 +326,11 @@ std::shared_ptr<StackRenderer> _renderer = std::make_shared<StackRenderer>();
 static PyObject*
 start(PyObject* self, PyObject* args, PyObject* kwargs)
 {
-    static char *kwlist[] = {"min_interval", "max_frames", NULL};
+    static char* kwlist[] = { "min_interval", "max_frames", NULL };
     double min_interval_f = 0.010; // Default 10ms period (100hz)
     double max_frames_f = 128;
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|dd", kwlist,
-                                     &min_interval_f, &max_frames_f)) {
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|dd", kwlist, &min_interval_f, &max_frames_f)) {
         return NULL; // If an error occurs during argument parsing
     }
 
@@ -395,12 +391,14 @@ set_v2_interval(PyObject* self, PyObject* args)
     return Py_None;
 }
 
-static PyMethodDef _stack_v2_methods[] = { { "start", (PyCFunction)start, METH_VARARGS | METH_KEYWORDS, "Start the sampler" },
-                                           { "collect", (PyCFunction)collect, METH_VARARGS, "Get an event" },
-                                           { "print_number", (PyCFunction)print_number, METH_VARARGS, "Print a number" },
-                                           { "set_interval", (PyCFunction)set_v2_interval, METH_VARARGS, "Set the sampling interval" },
-                                           { "swap_buffers", (PyCFunction)swap_buffers, METH_VARARGS, "Swap buffers" },
-                                           { NULL, NULL, 0, NULL } };
+static PyMethodDef _stack_v2_methods[] = {
+    { "start", (PyCFunction)start, METH_VARARGS | METH_KEYWORDS, "Start the sampler" },
+    { "collect", (PyCFunction)collect, METH_VARARGS, "Get an event" },
+    { "print_number", (PyCFunction)print_number, METH_VARARGS, "Print a number" },
+    { "set_interval", (PyCFunction)set_v2_interval, METH_VARARGS, "Set the sampling interval" },
+    { "swap_buffers", (PyCFunction)swap_buffers, METH_VARARGS, "Swap buffers" },
+    { NULL, NULL, 0, NULL }
+};
 
 PyMODINIT_FUNC
 PyInit_stack_v2(void)
