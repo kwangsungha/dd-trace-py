@@ -17,12 +17,14 @@ from ddtrace.ext import test
 from ddtrace.internal.ci_visibility import CIVisibility
 from ddtrace.internal.ci_visibility.constants import COVERAGE_TAG_NAME
 from ddtrace.internal.ci_visibility.encoder import CIVisibilityEncoderV01
-from ddtrace.internal.ci_visibility.git_client import CIVisibilityGitClient, METADATA_UPLOAD_STATUS
+from ddtrace.internal.ci_visibility.git_client import METADATA_UPLOAD_STATUS
+from ddtrace.internal.ci_visibility.git_client import CIVisibilityGitClient
 from ddtrace.internal.ci_visibility.recorder import _CIVisibilitySettings
 from tests.ci_visibility.util import _patch_dummy_writer
 from tests.contrib.patch import emit_integration_and_version_to_test_agent
 from tests.utils import TracerTestCase
 from tests.utils import override_env
+
 
 class PytestTestCase(TracerTestCase):
     @pytest.fixture(scope="function", autouse=True)
@@ -40,14 +42,18 @@ class PytestTestCase(TracerTestCase):
         """
 
         def _mock_upload_git_metadata(obj, **kwargs):
-            obj._metadata_upload_status=METADATA_UPLOAD_STATUS.SUCCESS
+            obj._metadata_upload_status = METADATA_UPLOAD_STATUS.SUCCESS
 
-        with (mock.patch(
-            "ddtrace.internal.ci_visibility.recorder.CIVisibility._check_enabled_features",
-            return_value=_CIVisibilitySettings(False, False, False, False),
-        ), mock.patch.multiple(CIVisibilityGitClient, upload_git_metadata=_mock_upload_git_metadata, _do_request=NotImplementedError
-        ), mock.patch("ddtrace.internal.ci_visibility.recorder._do_request", side_effect=NotImplementedError
-        )):
+        with (
+            mock.patch(
+                "ddtrace.internal.ci_visibility.recorder.CIVisibility._check_enabled_features",
+                return_value=_CIVisibilitySettings(False, False, False, False),
+            ),
+            mock.patch.multiple(
+                CIVisibilityGitClient, upload_git_metadata=_mock_upload_git_metadata, _do_request=NotImplementedError
+            ),
+            mock.patch("ddtrace.internal.ci_visibility.recorder._do_request", side_effect=NotImplementedError),
+        ):
             yield
 
     def inline_run(self, *args):
@@ -554,6 +560,7 @@ class PytestTestCase(TracerTestCase):
         """
         )
         file_name = os.path.basename(py_file.strpath)
+
         with override_env(
             {
                 "APPVEYOR": "true",
@@ -569,8 +576,14 @@ class PytestTestCase(TracerTestCase):
         providers = [provider for (provider, extract) in ci.PROVIDERS]
         for provider in providers:
             self.monkeypatch.delenv(provider, raising=False)
+        # Move .git repo to prevent identifying it by URL:
+        import shutil
+
+        shutil.move(os.path.join(str(self.git_repo), ".git"), os.path.join(str(self.git_repo), ".brokengit"))
+
         py_file = self.testdir.makepyfile(
             """
+            from unittest import mock
             def test_service(ddspan):
                 assert ddspan.service == "pytest"
                 assert ddspan.name == "pytest.test"
