@@ -649,7 +649,6 @@ class PytestTestCase(TracerTestCase):
         """
         )
         file_name = os.path.basename(py_file.strpath)
-        breakpoint()
         rec = self.inline_run("--ddtrace", file_name)
         rec.assertoutcome(passed=1)
         spans = self.pop_spans()
