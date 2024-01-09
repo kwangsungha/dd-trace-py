@@ -14,6 +14,9 @@
 #include <thread>
 #include <unistd.h>
 
+// debuggin
+#include <iostream>
+
 // State
 bool is_initialized = false;
 Datadog::Uploader* g_uploader;
@@ -125,8 +128,12 @@ sigsegv_handler(int sig, siginfo_t* si, void* uc)
     print_backtrace();
     exit(-1);
 }
-
 #endif
+
+bool ddup_is_initialized() {
+  return is_initialized;
+}
+
 void
 ddup_init()
 {
@@ -144,6 +151,8 @@ ddup_init()
         g_profile = g_profile_real[g_prof_flag];
         g_uploader = uploader_builder.build_ptr();
         is_initialized = true;
+
+        std::cout << "Initialized" << std::endl;
     }
 }
 

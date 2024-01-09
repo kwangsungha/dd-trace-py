@@ -15,6 +15,10 @@ except ImportError:
             raise NotImplementedError("{} is not implemented on this platform".format(func.__name__))
 
     @not_implemented
+    def is_initialized():
+        pass
+
+    @not_implemented
     def init(
         env,  # type: Optional[str]
         service,  # type: Optional[str]

@@ -1,6 +1,8 @@
 import platform
 import typing
 from typing import Optional
+from importlib import import_module
+libddup = import_module('ddtrace.internal.datadog.profiling.libddup')
 
 import ddtrace
 from ddtrace.internal import runtime
@@ -38,6 +40,7 @@ IF UNAME_SYSNAME == "Linux":
         void ddup_config_sample_type(unsigned int type)
 
         void ddup_init()
+        int ddup_is_initialized()
 
         void ddup_start_sample(unsigned int nframes)
         void ddup_push_walltime(int64_t walltime, int64_t count)
@@ -91,6 +94,9 @@ IF UNAME_SYSNAME == "Linux":
             for key, val in tags.items():
                 ddup_config_user_tag(key, val)
         ddup_init()
+
+    def is_initialized() -> bool:
+        return ddup_is_initialized()
 
     def start_sample(nframes: int) -> None:
         ddup_start_sample(nframes)

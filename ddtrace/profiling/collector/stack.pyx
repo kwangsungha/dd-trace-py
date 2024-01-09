@@ -12,6 +12,7 @@ from ddtrace import context
 from ddtrace import span as ddspan
 from ddtrace.internal import compat
 from ddtrace.internal.datadog.profiling import ddup
+from ddtrace.internal.datadog.profiling import stack_v2
 from ddtrace.internal.logger import get_logger
 from ddtrace.internal.utils import formats
 from ddtrace.profiling import _threading
@@ -19,7 +20,6 @@ from ddtrace.profiling import collector
 from ddtrace.profiling.collector import _task
 from ddtrace.profiling.collector import _traceback
 from ddtrace.profiling.collector import stack_event
-from ddtrace.profiling.collector import stack_v2
 from ddtrace.settings.profiling import config
 
 
@@ -492,8 +492,10 @@ class StackCollector(collector.PeriodicCollector):
         set_use_libdd(config.export.libdd_enabled)
         set_use_py(config.export.py_enabled)
 
-        if self._stack_collector_v2_enabled:
+        if self._stack_collector_v2_enabled and use_libdd:
             stack_v2.start(max_frames=self.nframes, min_interval=self.min_interval_time)
+        else:
+            LOG.error("Unable to initialize libddprofiler, falling back to Python stack collector")
 
     def _start_service(self):
         # type: (...) -> None
@@ -517,17 +519,8 @@ class StackCollector(collector.PeriodicCollector):
         wall_time = now - self._last_wall_time
         self._last_wall_time = now
 
-        if self._stack_collector_v2_enabled:
-            stack_events = []
-            exc_events = []
-            stack_v2.swap_buffers()
-            while True:
-                event = stack_v2.collect()
-                if not event:
-                    break
-                stack_events.append(event)
-#            stack_v2.print_number("Events", len(stack_events))
-            all_events = stack_events, exc_events
+        if self._stack_collector_v2_enabled and use_libdd:
+            all_events = [], []
         else:
             all_events = stack_collect(
                 self.ignore_profiler,
@@ -541,10 +534,5 @@ class StackCollector(collector.PeriodicCollector):
 
         used_wall_time_ns = compat.monotonic_ns() - now
         self.interval = self._compute_new_interval(used_wall_time_ns)
-
-        # If we're using the v2 stack collector, adjust the interval now.  If we don't
-        # do this we can easily become unable to keep up with the rate of events.
-        if self._stack_collector_v2_enabled:
-            stack_v2.set_interval(self.interval)
 
         return all_events

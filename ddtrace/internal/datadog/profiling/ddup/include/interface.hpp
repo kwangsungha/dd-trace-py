@@ -23,6 +23,7 @@ void ddup_config_max_nframes(int max_nframes);
 void ddup_config_user_tag(const char *key, const char *val);
 void ddup_config_sample_type(unsigned int type);
 
+bool ddup_is_initialized();
 void ddup_init();
 
 void ddup_start_sample(unsigned int nframes);

@@ -3,6 +3,7 @@ from typing import Optional
 
 from ddtrace.span import Span
 
+def is_initialized() -> bool: ...
 def init(
     env: Optional[str],
     service: Optional[str],

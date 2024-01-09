@@ -41,9 +41,9 @@ IS_PYSTON = hasattr(sys, "pyston_version_info")
 
 LIBDDWAF_DOWNLOAD_DIR = os.path.join(HERE, "ddtrace", "appsec", "_ddwaf", "libddwaf")
 IAST_DIR = os.path.join(HERE, "ddtrace", "appsec", "_iast", "_taint_tracking")
-STACK_V2_DIR = os.path.join(HERE, "ddtrace", "profiling", "collector", "_stackv2")
 LIBDATADOG_PROF_DOWNLOAD_DIR = os.path.join(HERE, "ddtrace", "internal", "datadog", "profiling", "libdatadog")
 DDUP_DIR = os.path.join(HERE, "ddtrace", "internal", "datadog", "profiling")
+STACK_V2_DIR = os.path.join(DDUP_DIR, "stack_v2")
 CURRENT_OS = platform.system()
 
 LIBDDWAF_VERSION = "1.15.1"
@@ -335,7 +335,6 @@ class CMakeBuild(build_ext):
             "-B{}".format(cmake_build_dir),  # cmake>=3.13
             "-DPython3_INCLUDE_DIRS={}".format(python_include),
             "-DPython3_LIBRARIES={}".format(python_lib),
-            "-DEXTENSION_NAME={}".format(ext.name),
             "-DPYTHON_EXECUTABLE={}".format(sys.executable),
             "-DCMAKE_BUILD_TYPE={}".format(ext.build_type),
             "-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={}".format(output_dir),
@@ -500,14 +499,31 @@ if not IS_PYSTON:
 
         ext_modules.append(
             CMakeExtension(
-                "ddtrace.profiling.collector.stack_v2",
+                "ddtrace.internal.datadog.profiling.ddup",
+                source_dir=DDUP_DIR,
+                permissive_build=CURRENT_OS != "Linux",
+                cmake_args=[
+                    "-DPLATFORM={}".format(CURRENT_OS),
+                    "-DPY_MAJOR_VERSION={}".format(sys.version_info.major),
+                    "-DPY_MINOR_VERSION={}".format(sys.version_info.minor),
+                    "-DPY_MICRO_VERSION={}".format(sys.version_info.micro),
+                    "-Dddup_INSTALL_DIR={}".format(DDUP_DIR),
+                ],
+            )
+        )
+
+        ext_modules.append(
+            CMakeExtension(
+                "ddtrace.internal.datadog.profiling.stack_v2",
                 source_dir=STACK_V2_DIR,
                 permissive_build=CURRENT_OS != "Linux",
                 cmake_args=[
                     "-DPLATFORM={}".format(CURRENT_OS),
-                    "-Dddup_SOURCE_DIR={}".format(DDUP_DIR),
+                    "-DPY_MAJOR_VERSION={}".format(sys.version_info.major),
+                    "-DPY_MINOR_VERSION={}".format(sys.version_info.minor),
+                    "-DPY_MICRO_VERSION={}".format(sys.version_info.micro),
+                    "-Dddup_INSTALL_DIR={}".format(DDUP_DIR),
                 ],
-
             )
         )
 
@@ -579,6 +595,7 @@ setup(
         "ddtrace.appsec": ["rules.json"],
         "ddtrace.appsec._ddwaf": [os.path.join("libddwaf", "*", "lib", "libddwaf.*")],
         "ddtrace.appsec._iast._taint_tracking": ["CMakeLists.txt"],
+        "ddtrace.internal.datadog.profiling": ["libddup.*"],
     },
     python_requires=">=3.7",
     zip_safe=False,
@@ -696,6 +713,5 @@ setup(
         annotate=os.getenv("_DD_CYTHON_ANNOTATE") == "1",
     )
     + get_exts_for("wrapt")
-    + get_exts_for("psutil")
-    + get_ddup_ext(),
+    + get_exts_for("psutil"),
 )

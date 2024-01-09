@@ -15,6 +15,7 @@ option(UNWIND_NATIVE_ENABLE "Enable native unwinding" OFF)
 include(FetchContent)
 include(ExternalProject)
 include(FindPython3)
+add_subdirectory(../ddup "${CMAKE_CURRENT_BINARY_DIR}/libddup") # Disgusting.
 
 # Find the Python interpreter
 find_package(Python3 COMPONENTS Interpreter REQUIRED)
@@ -76,13 +77,13 @@ endif()
 
 # Specify the target C-extension that we want to build
 add_library(${EXTENSION_NAME} SHARED
-    _stack_v2.cpp
+    src/stack.cpp
 )
 
 target_include_directories(${EXTENSION_NAME} PRIVATE
     ${Python3_INCLUDE_DIRS}
     ${echion_SOURCE_DIR}
-    ${ddup_SOURCE_DIR}/include
+    ../ddup/include
 )
 
 # We want the extension name to be literal
@@ -97,6 +98,10 @@ if (UNWIND_NATIVE_ENABLE)
   target_link_libraries(${EXTENSION_NAME} PRIVATE ${LIBUNWIND_LIB} ${LIBUNWIND_ARCH_LIB})
   )
 endif()
+
+target_link_libraries(${EXTENSION_NAME} PRIVATE
+    ddup
+)
 
 # We want the extension to be built with position-independent code
 set_target_properties(${EXTENSION_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
