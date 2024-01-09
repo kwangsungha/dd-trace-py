@@ -15,7 +15,7 @@ option(UNWIND_NATIVE_ENABLE "Enable native unwinding" OFF)
 include(FetchContent)
 include(ExternalProject)
 include(FindPython3)
-add_subdirectory(../ddup "${CMAKE_CURRENT_BINARY_DIR}/libddup") # Disgusting.
+add_subdirectory(../dd_wrapper "${CMAKE_CURRENT_BINARY_DIR}/dd_wrapper") # Disgusting.
 
 # Find the Python interpreter
 find_package(Python3 COMPONENTS Interpreter REQUIRED)
@@ -83,12 +83,13 @@ add_library(${EXTENSION_NAME} SHARED
 target_include_directories(${EXTENSION_NAME} PRIVATE
     ${Python3_INCLUDE_DIRS}
     ${echion_SOURCE_DIR}
-    ../ddup/include
+    ../dd_wrapper/include
 )
 
 # We want the extension name to be literal
 set_target_properties(${EXTENSION_NAME} PROPERTIES PREFIX "")
 set_target_properties(${EXTENSION_NAME} PROPERTIES SUFFIX "")
+set_target_properties(${EXTENSION_NAME} PROPERTIES INSTALL_RPATH "$ORIGIN") # NB., gets installed to parent!
 
 # Add stuff we might need for native unwinding
 if (UNWIND_NATIVE_ENABLE)
@@ -100,7 +101,7 @@ if (UNWIND_NATIVE_ENABLE)
 endif()
 
 target_link_libraries(${EXTENSION_NAME} PRIVATE
-    ddup
+    dd_wrapper
 )
 
 # We want the extension to be built with position-independent code

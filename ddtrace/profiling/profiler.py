@@ -15,7 +15,6 @@ from ddtrace.internal import forksafe
 from ddtrace.internal import service
 from ddtrace.internal import uwsgi
 from ddtrace.internal import writer
-from ddtrace.internal.datadog.profiling import ddup
 from ddtrace.internal.module import ModuleWatchdog
 from ddtrace.profiling import collector
 from ddtrace.profiling import exporter  # noqa:F401
@@ -174,6 +173,7 @@ class _ProfilerInstance(service.Service):
             endpoint_call_counter_span_processor.enable()
 
         if self._export_libdd_enabled:
+            from ddtrace.internal.datadog.profiling import ddup
             versionname = (
                 "{}.libdd".format(self.version)
                 if self._export_py_enabled and self.version is not None

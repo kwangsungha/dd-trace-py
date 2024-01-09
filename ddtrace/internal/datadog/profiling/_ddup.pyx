@@ -1,9 +1,6 @@
 import platform
 import typing
 from typing import Optional
-from importlib import import_module
-libddup = import_module('ddtrace.internal.datadog.profiling.libddup')
-
 import ddtrace
 from ddtrace.internal import runtime
 from ddtrace.internal.compat import ensure_binary

@@ -499,7 +499,7 @@ if not IS_PYSTON:
 
         ext_modules.append(
             CMakeExtension(
-                "ddtrace.internal.datadog.profiling.ddup",
+                "ddtrace.internal.datadog.profiling._ddup",
                 source_dir=DDUP_DIR,
                 permissive_build=CURRENT_OS != "Linux",
                 cmake_args=[
@@ -507,7 +507,7 @@ if not IS_PYSTON:
                     "-DPY_MAJOR_VERSION={}".format(sys.version_info.major),
                     "-DPY_MINOR_VERSION={}".format(sys.version_info.minor),
                     "-DPY_MICRO_VERSION={}".format(sys.version_info.micro),
-                    "-Dddup_INSTALL_DIR={}".format(DDUP_DIR),
+                    "-Ddd_wrapper_INSTALL_DIR={}".format(DDUP_DIR),
                 ],
             )
         )
@@ -522,7 +522,7 @@ if not IS_PYSTON:
                     "-DPY_MAJOR_VERSION={}".format(sys.version_info.major),
                     "-DPY_MINOR_VERSION={}".format(sys.version_info.minor),
                     "-DPY_MICRO_VERSION={}".format(sys.version_info.micro),
-                    "-Dddup_INSTALL_DIR={}".format(DDUP_DIR),
+                    "-Ddd_wrapper_INSTALL_DIR={}".format(DDUP_DIR),
                 ],
             )
         )
@@ -590,12 +590,13 @@ setup(
     long_description_content_type="text/markdown",
     license="BSD",
     packages=find_packages(exclude=["tests*", "benchmarks*"]),
+    include_package_data=True,
     package_data={
         "ddtrace": ["py.typed"],
         "ddtrace.appsec": ["rules.json"],
         "ddtrace.appsec._ddwaf": [os.path.join("libddwaf", "*", "lib", "libddwaf.*")],
         "ddtrace.appsec._iast._taint_tracking": ["CMakeLists.txt"],
-        "ddtrace.internal.datadog.profiling": ["libddup.*"],
+        "ddtrace.internal.datadog.profiling": ["libdd_wrapper.*"],
     },
     python_requires=">=3.7",
     zip_safe=False,

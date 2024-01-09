@@ -12,7 +12,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 include(FetchContent)
 include(ExternalProject)
 include(FindPython3)
-add_subdirectory(ddup)
+add_subdirectory(dd_wrapper)
 
 # Find the Python interpreter
 find_package(Python3 COMPONENTS Interpreter REQUIRED)
@@ -26,30 +26,29 @@ set (ENV{PY_MINOR_VERSION} ${PY_MINOR_VERSION})
 set (ENV{PY_MICRO_VERSION} ${PY_MICRO_VERSION})
 
 add_custom_command(
-    OUTPUT ${CMAKE_CURRENT_LIST_DIR}/src/_ddup.cpp
-    COMMAND ${PYTHON_EXECUTABLE} -m cython ${CMAKE_CURRENT_LIST_DIR}/_ddup.pyx -o ${CMAKE_CURRENT_LIST_DIR}/src/_ddup.cpp
+    OUTPUT ${CMAKE_CURRENT_LIST_DIR}/_ddup.cpp
+    COMMAND ${PYTHON_EXECUTABLE} -m cython ${CMAKE_CURRENT_LIST_DIR}/_ddup.pyx -o ${CMAKE_CURRENT_LIST_DIR}/_ddup.cpp
     DEPENDS ${CMAKE_CURRENT_LIST_DIR}/_ddup.pyx
 )
 
 # Specify the target C-extension that we want to build
 # prefix/suffix stuff is to ensure the extension name is literal
 add_library(${EXTENSION_NAME} SHARED
-    src/_ddup.cpp
+    _ddup.cpp
 )
 set_target_properties(${EXTENSION_NAME} PROPERTIES PREFIX "")
 set_target_properties(${EXTENSION_NAME} PROPERTIES SUFFIX "")
+set_target_properties(${EXTENSION_NAME} PROPERTIES INSTALL_RPATH "$ORIGIN")
 
-message("Python3_INCLUDE_DIRS: ${Python3_INCLUDE_DIRS}")
-message("Datadog_INCLUDE_DIRS: ${Datadog_INCLUDE_DIRS}")
 target_include_directories(${EXTENSION_NAME} PRIVATE
     include
-    ddup/include
+    dd_wrapper/include
     ${Datadog_INCLUDE_DIRS}
     ${Python3_INCLUDE_DIRS}
 )
 
 target_link_libraries(${EXTENSION_NAME} PRIVATE
-    ddup
+    dd_wrapper
 )
 
 # We want the extension to be built with position-independent code
