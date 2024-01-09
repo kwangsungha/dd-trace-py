@@ -34,14 +34,12 @@ class StackRenderer : public RendererInterface
                              uintptr_t thread_id,
                              unsigned long native_id) override
     {
-        ddup_push_threadinfo(
-            static_cast<int64_t>(thread_id),
-            static_cast<int64_t>(native_id),
-            name.data());
+        ddup_push_threadinfo(static_cast<int64_t>(thread_id), static_cast<int64_t>(native_id), name.data());
         ddup_push_walltime(wall_time, 1);
     }
 
-    void render_stack_begin() override {
+    void render_stack_begin() override
+    {
         ddup_start_sample(512); // TODO magic number
     }
 
@@ -55,15 +53,9 @@ class StackRenderer : public RendererInterface
         ddup_push_frame(name.data(), file.data(), 0, line);
     }
 
-    void render_cpu_time(uint64_t cpu_time) override
-    {
-        ddup_push_cputime(cpu_time, 1);
-    }
+    void render_cpu_time(uint64_t cpu_time) override { ddup_push_cputime(cpu_time, 1); }
 
-    void render_stack_end() override
-    {
-        ddup_flush_sample();
-    }
+    void render_stack_end() override { ddup_flush_sample(); }
 
     bool is_valid() override { return true; }
 
@@ -100,7 +92,6 @@ class StackRenderer : public RendererInterface
             exit(1);
         }
     }
-
 };
 
 // Initialize static members

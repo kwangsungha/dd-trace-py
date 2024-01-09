@@ -130,8 +130,10 @@ sigsegv_handler(int sig, siginfo_t* si, void* uc)
 }
 #endif
 
-bool ddup_is_initialized() {
-  return is_initialized;
+bool
+ddup_is_initialized()
+{
+    return is_initialized;
 }
 
 void
