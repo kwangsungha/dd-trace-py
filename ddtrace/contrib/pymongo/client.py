@@ -46,7 +46,12 @@ log = get_logger(__name__)
 _DEFAULT_SERVICE = schematize_service_name("pymongo")
 
 
-class TracedMongoClient(ObjectProxy):
+class TracedMongoClientMeta(type):
+    def __getattr__(cls, name):
+        return getattr(_MongoClient, name)
+
+
+class TracedMongoClient(ObjectProxy, metaclass=TracedMongoClientMeta):
     def __init__(self, client=None, *args, **kwargs):
         # To support the former trace_mongo_client interface, we have to keep this old interface
         # TODO(Benjamin): drop it in a later version
@@ -235,6 +240,9 @@ class TracedSocket(ObjectProxy):
             log.exception("error parsing spec. skipping trace")
 
         pin = ddtrace.Pin.get_from(self)
+        if type(kwargs["client"]) == TracedMongoClient:
+            kwargs["client"] = kwargs["client"].__wrapped__
+
         # skip tracing if we don't have a piece of data we need
         if not dbname or not cmd or not pin or not pin.enabled():
             return self.__wrapped__.command(dbname, spec, *args, **kwargs)
@@ -252,6 +260,9 @@ class TracedSocket(ObjectProxy):
             log.exception("error parsing msg")
 
         pin = ddtrace.Pin.get_from(self)
+        if type(kwargs["client"]) == TracedMongoClient:
+            kwargs["client"] = kwargs["client"].__wrapped__
+
         # if we couldn't parse it, don't try to trace it.
         if not cmd or not pin or not pin.enabled():
             return self.__wrapped__.write_command(*args, **kwargs)
@@ -293,6 +304,9 @@ class TracedSocket(ObjectProxy):
         if self.address:
             set_address_tags(s, self.address)
         return s
+
+    def validate_session(self, client, session):
+        return self.__wrapped__.validate_session(client.__wrapped__, session)
 
 
 def normalize_filter(f=None):
