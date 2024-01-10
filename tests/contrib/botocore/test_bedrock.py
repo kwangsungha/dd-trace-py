@@ -144,6 +144,12 @@ class TestBedrockConfig(SubprocessTestCase):
         patch()
         import boto3
 
+        os.environ["AWS_ACCESS_KEY_ID"] = "testing"
+        os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
+        os.environ["AWS_SECURITY_TOKEN"] = "testing"
+        os.environ["AWS_SESSION_TOKEN"] = "testing"
+        os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
+
         self.session = boto3.Session(
             aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID", ""),
             aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY", ""),
